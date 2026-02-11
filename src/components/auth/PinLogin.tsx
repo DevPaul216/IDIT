@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser, SimpleUser } from "@/context/UserContext";
+import HealthCheck from "./HealthCheck";
 
 export default function PinLogin() {
   const [pin, setPin] = useState("");
@@ -32,11 +33,13 @@ export default function PinLogin() {
       if (response.ok && data.user) {
         login(data.user as SimpleUser);
       } else {
-        setError("Ungültige PIN");
+        console.error("PIN check failed:", { status: response.status, data });
+        setError(data.error || "Ungültige PIN");
         setPin("");
       }
-    } catch {
-      setError("Verbindungsfehler");
+    } catch (error) {
+      console.error("PIN authentication error:", error);
+      setError(`Fehler: ${error instanceof Error ? error.message : "Netzwerkfehler"}`);
       setPin("");
     } finally {
       setIsChecking(false);
@@ -81,6 +84,11 @@ export default function PinLogin() {
         <p style={{ color: "var(--text-muted)" }}>
           Intex Digitales Lagerverwaltungstool
         </p>
+      </div>
+
+      {/* Health Check Status */}
+      <div className="w-full max-w-sm mb-6">
+        <HealthCheck />
       </div>
 
       {/* PIN Display */}
