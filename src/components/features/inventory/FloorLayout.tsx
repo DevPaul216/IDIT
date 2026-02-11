@@ -28,14 +28,12 @@ export default function FloorLayout({
 }: FloorLayoutProps) {
   const [scale, setScale] = useState(1);
 
-  // Calculate grid bounds and optimal cell size
-  const { gridSize, maxX, maxY } = useMemo(() => {
-    const maxX = Math.max(...locations.map((l) => l.x + l.width), 8);
-    const maxY = Math.max(...locations.map((l) => l.y + l.height), 6);
-    // Make cells larger for easier tapping on mobile
-    const baseSize = compact ? 50 : 80;
-    return { gridSize: baseSize, maxX, maxY };
-  }, [locations, compact]);
+  // Calculate canvas bounds - coordinates are already in pixels
+  const { maxX, maxY } = useMemo(() => {
+    const maxX = Math.max(...locations.map((l) => l.x + l.width), 800);
+    const maxY = Math.max(...locations.map((l) => l.y + l.height), 600);
+    return { maxX, maxY };
+  }, [locations]);
 
   // Get total quantity for a location (including all children recursively)
   const getLocationTotal = (locationId: string): number => {
@@ -176,8 +174,8 @@ export default function FloorLayout({
         <div
           className="relative p-4 min-w-fit"
           style={{
-            width: maxX * gridSize * scale + 32,
-            height: maxY * gridSize * scale + 32,
+            width: maxX * scale + 32,
+            height: maxY * scale + 32,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
           }}
@@ -190,7 +188,7 @@ export default function FloorLayout({
                 linear-gradient(var(--border-light) 1px, transparent 1px),
                 linear-gradient(90deg, var(--border-light) 1px, transparent 1px)
               `,
-              backgroundSize: `${gridSize}px ${gridSize}px`,
+              backgroundSize: `10px 10px`,
             }}
           />
 
@@ -207,10 +205,10 @@ export default function FloorLayout({
                 onClick={() => handleLocationClick(location)}
                 className="absolute flex flex-col items-center justify-center transition-all duration-150 cursor-pointer active:scale-95 touch-manipulation"
                 style={{
-                  left: location.x * gridSize + 16,
-                  top: location.y * gridSize + 16,
-                  width: location.width * gridSize - 8,
-                  height: location.height * gridSize - 8,
+                  left: location.x + 16,
+                  top: location.y + 16,
+                  width: location.width,
+                  height: location.height,
                   borderRadius: "12px",
                   border: isSelected ? "3px solid" : hasChildren ? "2px dashed" : "2px solid",
                   ...style,

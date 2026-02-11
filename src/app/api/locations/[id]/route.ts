@@ -16,7 +16,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, description, x, y, width, height, color, isActive } = body;
+    const { name, description, x, y, width, height, color, capacity, isActive } = body;
 
     const location = await prisma.storageLocation.update({
       where: { id },
@@ -28,6 +28,7 @@ export async function PUT(
         ...(width !== undefined && { width }),
         ...(height !== undefined && { height }),
         ...(color !== undefined && { color }),
+        ...(capacity !== undefined && { capacity }),
         ...(isActive !== undefined && { isActive }),
       },
     });

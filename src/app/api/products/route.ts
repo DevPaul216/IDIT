@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const products = await prisma.productVariant.findMany({
       where: { isActive: true },
-      orderBy: { name: "asc" },
+      orderBy: [{ category: "asc" }, { name: "asc" }],
     });
     return NextResponse.json(products);
   } catch (error) {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, code, color } = body;
+    const { name, code, category, color } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         code: code || null,
+        category: category || "finished",
         color: color || null,
       },
     });

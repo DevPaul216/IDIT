@@ -1,8 +1,15 @@
 "use client";
 
-import { StorageLocation, ProductVariant, InventoryInput } from "@/types";
+import { StorageLocation, ProductVariant, InventoryInput, ProductCategory } from "@/types";
 import QuickNumberInput from "./QuickNumberInput";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
+
+// Category labels for display (no "all" option)
+const CATEGORY_TABS: { key: ProductCategory; label: string; icon: string }[] = [
+  { key: "raw", label: "Rohmaterial", icon: "🧵" },
+  { key: "finished", label: "Fertigprodukte", icon: "📦" },
+  { key: "packaging", label: "Verpackung", icon: "🏷️" },
+];
 
 interface MobileEntrySheetProps {
   location: StorageLocation;
@@ -28,9 +35,43 @@ export default function MobileEntrySheet({
   hasPrev,
 }: MobileEntrySheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  
+  // Find first category with products as default
+  const defaultCategory = useMemo(() => {
+    for (const tab of CATEGORY_TABS) {
+      if (products.some((p) => p.category === tab.key)) {
+        return tab.key;
+      }
+    }
+    return "raw";
+  }, [products]);
+  
+  const [activeCategory, setActiveCategory] = useState<ProductCategory>(defaultCategory);
 
   // Create a map for quick lookup
   const entryMap = new Map(entries.map((e) => [e.productId, e.quantity]));
+
+  // Filter products by category and sort (items with inventory first)
+  const filteredProducts = useMemo(() => {
+    const filtered = products.filter((p) => p.category === activeCategory);
+    return filtered.sort((a, b) => {
+      const aQty = entryMap.get(a.id) || 0;
+      const bQty = entryMap.get(b.id) || 0;
+      // Items with quantity come first
+      if (aQty > 0 && bQty === 0) return -1;
+      if (aQty === 0 && bQty > 0) return 1;
+      return 0;
+    });
+  }, [products, activeCategory, entryMap]);
+
+  // Count products per category for badges
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach((p) => {
+      counts[p.category] = (counts[p.category] || 0) + 1;
+    });
+    return counts;
+  }, [products]);
 
   const handleQuantityChange = (productId: string, quantity: number) => {
     const newEntries = products
@@ -165,27 +206,69 @@ export default function MobileEntrySheet({
         </div>
 
         {/* Product inputs - scrollable */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {products.length === 0 ? (
+        <div className="flex-1 overflow-y-auto flex flex-col">
+          {/* Category tabs */}
+          <div 
+            className="flex gap-2 p-3 overflow-x-auto shrink-0"
+            style={{ borderBottom: "1px solid var(--border-light)" }}
+          >
+            {CATEGORY_TABS.map((tab) => {
+              const count = categoryCounts[tab.key] || 0;
+              const isActive = activeCategory === tab.key;
+              // Don't show tabs with 0 products
+              if (count === 0) return null;
+              
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveCategory(tab.key)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl whitespace-nowrap transition-all active:scale-95"
+                  style={{
+                    backgroundColor: isActive ? "var(--accent)" : "var(--bg-tertiary)",
+                    color: isActive ? "white" : "var(--text-secondary)",
+                    fontWeight: isActive ? 600 : 400,
+                  }}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                  <span 
+                    className="text-xs px-1.5 py-0.5 rounded-full"
+                    style={{ 
+                      backgroundColor: isActive ? "rgba(255,255,255,0.2)" : "var(--bg-secondary)",
+                    }}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Product grid */}
+          <div className="flex-1 overflow-y-auto p-4">
+          {filteredProducts.length === 0 ? (
             <div
               className="text-center py-8"
               style={{ color: "var(--text-muted)" }}
             >
-              Keine Produkte konfiguriert.
+              {products.length === 0 
+                ? "Keine Produkte konfiguriert." 
+                : "Keine Produkte in dieser Kategorie."}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <QuickNumberInput
                   key={product.id}
                   value={entryMap.get(product.id) || 0}
                   onChange={(value) => handleQuantityChange(product.id, value)}
-                  label={product.code || product.name}
+                  label={product.name}
                   color={product.color || undefined}
                 />
               ))}
             </div>
           )}
+          </div>
         </div>
 
         {/* Footer with done button */}

@@ -6,68 +6,25 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")  // For migrations (bypasses connection pooler)
 }
 
 // ==========================================
-// Better Auth Tables
+// User Management (Simple PIN-based)
 // ==========================================
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  name          String?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  sessions      Session[]
-  accounts      Account[]
-  snapshots     InventorySnapshot[]
-}
-
-model Session {
   id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  ipAddress String?
-  userAgent String?
+  name      String
+  pin       String   // 4-digit PIN for quick login
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Account {
-  id                String   @id @default(cuid())
-  userId            String
-  accountId         String
-  providerId        String
-  accessToken       String?
-  refreshToken      String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope             String?
-  idToken           String?
-  password          String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([providerId, accountId])
-}
-
-model Verification {
-  id         String   @id @default(cuid())
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  inventoryChecks CurrentInventory[]
+  inventoryLogs   InventoryLog[]
 }
 
 // ==========================================
@@ -91,49 +48,62 @@ model StorageLocation {
   height      Int      @default(1)
   // Visual customization
   color       String?
+  // Capacity for leaf storage areas (null means unlimited/not set)
+  capacity    Int?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  entries     InventoryEntry[]
+  currentInventory CurrentInventory[]
+  inventoryLogs    InventoryLog[]
 }
 
 // Types of products/goods stored on pallets
+// Categories: "raw" (Rohmaterial), "finished" (Fertigprodukte), "packaging" (Verpackung)
 model ProductVariant {
-  id          String   @id @default(cuid())
-  name        String
-  code        String?  @unique  // Short code for quick entry
-  color       String?  // Color for visual distinction
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  code           String?  @unique  // Short code for quick entry
+  articleNumber  String?  @unique  // Official article/SKU number
+  category       String   @default("finished")  // raw, finished, packaging
+  color          String?  // Color for visual distinction
+  resourceWeight Float?   // Weight in kg (e.g., a bale might have 350 kg)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  entries     InventoryEntry[]
+  currentInventory CurrentInventory[]
+  inventoryLogs    InventoryLog[]
 }
 
-// A point-in-time snapshot of all inventory (taken after floor walkthrough)
-model InventorySnapshot {
-  id          String   @id @default(cuid())
-  takenAt     DateTime @default(now())
-  takenById   String
-  notes       String?
-  createdAt   DateTime @default(now())
+// Current live inventory state - always reflects the real warehouse
+// Each location+product combo has exactly one entry (or none if never checked)
+model CurrentInventory {
+  id              String   @id @default(cuid())
+  locationId      String
+  productId       String
+  quantity        Int      // Number of pallets (0 = explicitly empty)
+  lastCheckedAt   DateTime @default(now())
+  lastCheckedById String
 
-  takenBy     User     @relation(fields: [takenById], references: [id])
-  entries     InventoryEntry[]
+  location        StorageLocation @relation(fields: [locationId], references: [id])
+  product         ProductVariant  @relation(fields: [productId], references: [id])
+  lastCheckedBy   User            @relation(fields: [lastCheckedById], references: [id])
+
+  @@unique([locationId, productId])
 }
 
-// Individual inventory entry within a snapshot
-model InventoryEntry {
-  id          String   @id @default(cuid())
-  snapshotId  String
-  locationId  String
-  productId   String
-  quantity    Int      // Number of pallets
+// Audit log for all inventory changes - used for analytics and history
+model InventoryLog {
+  id              String   @id @default(cuid())
+  locationId      String
+  productId       String
+  previousQty     Int?     // null if first entry for this location+product
+  newQty          Int
+  changedById     String
+  changedAt       DateTime @default(now())
 
-  snapshot    InventorySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
-  location    StorageLocation   @relation(fields: [locationId], references: [id])
-  product     ProductVariant    @relation(fields: [productId], references: [id])
-
-  @@unique([snapshotId, locationId, productId])
+  location        StorageLocation @relation(fields: [locationId], references: [id])
+  product         ProductVariant  @relation(fields: [productId], references: [id])
+  changedBy       User            @relation(fields: [changedById], references: [id])
 }

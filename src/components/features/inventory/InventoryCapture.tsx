@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { StorageLocation, ProductVariant, InventoryInput } from "@/types";
+import { useUser } from "@/context/UserContext";
 import FloorLayout from "./FloorLayout";
 import MobileEntrySheet from "./MobileEntrySheet";
 
 export default function InventoryCapture() {
+  const { user } = useUser();
   const [allLocations, setAllLocations] = useState<StorageLocation[]>([]);
   const [products, setProducts] = useState<ProductVariant[]>([]);
   const [inventoryData, setInventoryData] = useState<Map<string, InventoryInput[]>>(
@@ -16,7 +18,6 @@ export default function InventoryCapture() {
   );
   const [currentParent, setCurrentParent] = useState<StorageLocation | null>(null);
   const [navigationStack, setNavigationStack] = useState<StorageLocation[]>([]);
-  const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -118,7 +119,7 @@ export default function InventoryCapture() {
     });
   };
 
-  const handleSaveSnapshot = async () => {
+  const handleSaveInventory = async () => {
     const allEntries: InventoryInput[] = [];
     inventoryData.forEach((entries) => {
       allEntries.push(...entries);
@@ -129,32 +130,44 @@ export default function InventoryCapture() {
       return;
     }
 
+    if (!user) {
+      setError("Nicht angemeldet.");
+      return;
+    }
+
     setIsSaving(true);
     setError("");
     setSuccess("");
 
     try {
-      const response = await fetch("/api/snapshots", {
+      const response = await fetch("/api/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          notes: notes || null,
           entries: allEntries,
+          userId: user.id,
         }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Snapshot konnte nicht gespeichert werden");
+        // Handle invalid session - user must log out/in
+        if (data.error === "USER_NOT_FOUND") {
+          setError("⚠️ Sitzung ungültig. Bitte ausloggen und erneut einloggen.");
+          return;
+        }
+        throw new Error(data.error || "Lagerstand konnte nicht gespeichert werden");
       }
 
+      const result = await response.json();
+      
+      // Clear only the saved entries, keep the form usable
       setInventoryData(new Map());
       setSelectedLocation(null);
-      setNotes("");
-      setSuccess("✓ Lagerbestand erfolgreich gespeichert!");
-      setTimeout(() => setSuccess(""), 3000);
+      setSuccess(`✓ ${result.message}`);
+      setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Snapshot konnte nicht gespeichert werden");
+      setError(err instanceof Error ? err.message : "Lagerstand konnte nicht gespeichert werden");
     } finally {
       setIsSaving(false);
     }
@@ -166,7 +179,6 @@ export default function InventoryCapture() {
       setSelectedLocation(null);
       setCurrentParent(null);
       setNavigationStack([]);
-      setNotes("");
     }
   };
 
@@ -315,23 +327,9 @@ export default function InventoryCapture() {
           )}
         </div>
 
-        {/* Notes input */}
-        <input
-          type="text"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Optionale Notizen..."
-          className="w-full px-4 py-3 rounded-xl mb-4 text-base"
-          style={{
-            backgroundColor: "var(--bg-tertiary)",
-            border: "1px solid var(--border-light)",
-            color: "var(--text-primary)",
-          }}
-        />
-
         {/* Save button */}
         <button
-          onClick={handleSaveSnapshot}
+          onClick={handleSaveInventory}
           disabled={isSaving || !hasData}
           className="w-full h-14 rounded-xl font-bold text-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
@@ -345,9 +343,57 @@ export default function InventoryCapture() {
               Speichern...
             </span>
           ) : (
-            `💾 Snapshot speichern${hasData ? ` (${totalPallets} Paletten)` : ""}`
+            `💾 Lagerstand speichern${hasData ? ` (${totalPallets} Paletten)` : ""}`
           )}
         </button>
+
+        {/* Summary of what will be saved */}
+        {hasData && (
+          <div 
+            className="mt-4 rounded-xl p-3 max-h-48 overflow-y-auto"
+            style={{ backgroundColor: "var(--bg-tertiary)" }}
+          >
+            <div className="text-xs font-semibold mb-2" style={{ color: "var(--text-muted)" }}>
+              📋 Erfasste Positionen:
+            </div>
+            <div className="space-y-2">
+              {Array.from(inventoryData.entries()).map(([locationId, entries]) => {
+                const location = allLocations.find((l) => l.id === locationId);
+                if (!location || entries.length === 0) return null;
+                
+                return (
+                  <div 
+                    key={locationId}
+                    className="rounded-lg p-2"
+                    style={{ backgroundColor: "var(--bg-secondary)" }}
+                  >
+                    <div className="font-semibold text-sm mb-1" style={{ color: "var(--text-primary)" }}>
+                      📍 {location.name}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {entries.map((entry) => {
+                        const product = products.find((p) => p.id === entry.productId);
+                        if (!product) return null;
+                        return (
+                          <span
+                            key={entry.productId}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{ 
+                              backgroundColor: product.color || "var(--accent)",
+                              color: "white",
+                            }}
+                          >
+                            {product.name}: {entry.quantity}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Mobile Entry Sheet */}
