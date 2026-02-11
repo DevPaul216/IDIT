@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -54,30 +55,91 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Load collapsed state from localStorage on mount
+  useEffect(() => {
+    setIsMounted(true);
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved) {
+      setIsCollapsed(JSON.parse(saved));
+    }
+  }, []);
+
+  // Save collapsed state to localStorage
+  const toggleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem("sidebar-collapsed", JSON.stringify(newState));
+  };
+
+  // Prevent hydration mismatch
+  if (!isMounted) {
+    return (
+      <aside 
+        className="w-64 min-h-screen"
+        style={{ 
+          backgroundColor: 'var(--bg-primary)', 
+          borderRight: '1px solid var(--border-light)' 
+        }}
+      />
+    );
+  }
 
   return (
     <aside 
-      className="w-64 min-h-screen"
+      className={cn(
+        "min-h-screen flex flex-col transition-all duration-300 ease-in-out",
+        isCollapsed ? "w-20" : "w-64"
+      )}
       style={{ 
         backgroundColor: 'var(--bg-primary)', 
         borderRight: '1px solid var(--border-light)' 
       }}
     >
-      <div className="p-6">
-        <Link href="/dashboard" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-            <span className="text-xl">🔥</span>
-          </div>
-          <div>
-            <span 
-              className="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent"
-            >IDIT</span>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Lagerverwaltung</p>
-          </div>
-        </Link>
+      {/* Header with logo and toggle */}
+      <div className={cn("p-4 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
+        {!isCollapsed && (
+          <Link href="/dashboard" className="flex items-center gap-3 group flex-1 min-w-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
+              <span className="text-xl">🔥</span>
+            </div>
+            <div className="min-w-0">
+              <span 
+                className="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent block truncate"
+              >IDIT</span>
+              <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>Lagerverwaltung</p>
+            </div>
+          </Link>
+        )}
+
+        {isCollapsed && (
+          <Link href="/dashboard" className="flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg hover:scale-105 transition-transform">
+              <span className="text-xl">🔥</span>
+            </div>
+          </Link>
+        )}
+
+        <button
+          onClick={toggleCollapse}
+          className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+          title={isCollapsed ? "Sidebar erweitern" : "Sidebar einklappen"}
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {isCollapsed ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            )}
+          </svg>
+        </button>
       </div>
 
-      <nav className="px-4 pb-4">
+      {/* Navigation */}
+      <nav className={cn("flex-1 pb-4", isCollapsed ? "px-2" : "px-4")}>
         <ul className="space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
@@ -87,14 +149,18 @@ export default function Sidebar() {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    isCollapsed && "justify-center px-2",
                     isActive
                       ? "bg-gradient-to-r from-orange-500/10 to-red-500/10 text-orange-600 shadow-sm"
                       : "hover:bg-gray-100 dark:hover:bg-gray-800"
                   )}
                   style={!isActive ? { color: 'var(--text-muted)' } : undefined}
+                  title={isCollapsed ? item.label : undefined}
                 >
-                  {item.icon}
-                  {item.label}
+                  <span className="flex-shrink-0">
+                    {item.icon}
+                  </span>
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </Link>
               </li>
             );

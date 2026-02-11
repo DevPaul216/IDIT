@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findFirst({
       where: {
         pin: pin,
-        isActive: true,
       },
     });
 

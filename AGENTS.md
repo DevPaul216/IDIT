@@ -13,6 +13,36 @@ c:\Users\pauls\OneDrive\Projekte\IntexSystemPrototype\idit
 - To restart: `Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force; npm run dev`
 - Always use background mode for dev server
 
+## ⚠️ CRITICAL: Prisma Lock Issues (EPERM errors)
+
+**If you see:** `EPERM: operation not permitted, rename '...\query_engine-windows.dll.node'`
+
+**Solution - Run in PowerShell:**
+```powershell
+# Kill all node processes
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# Then rebuild
+npm run build
+```
+
+**If that fails, do a full clean:**
+```powershell
+# Kill processes
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# Remove Prisma client cache
+Remove-Item -Recurse -Force node_modules\.prisma\client -ErrorAction SilentlyContinue
+
+# Rebuild
+npm run build
+```
+
+**Root cause:** Prisma query engine binary gets locked when:
+- Multiple node processes access it simultaneously
+- OneDrive/cloud sync interferes with file operations
+- Previous build didn't clean up properly
+
 ## Project: IDIT - Intex Digitales Lagerverwaltungstool
 A warehouse inventory tracking tool for Intex. Employees walk the floor, record pallet counts at storage locations, and save point-in-time snapshots.
 

@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, code, color } = body;
+    const { name, code, color, articleNumber, resourceWeight, category } = body;
 
     const product = await prisma.productVariant.update({
       where: { id },
@@ -17,6 +17,9 @@ export async function PUT(
         ...(name !== undefined && { name }),
         ...(code !== undefined && { code }),
         ...(color !== undefined && { color }),
+        ...(articleNumber !== undefined && { articleNumber }),
+        ...(resourceWeight !== undefined && { resourceWeight }),
+        ...(category !== undefined && { category }),
       },
     });
 
@@ -46,11 +49,6 @@ export async function DELETE(
   } catch (error) {
     console.error("Failed to delete product:", error);
     return NextResponse.json(
-      { error: "Failed to delete product" },
-      { status: 500 }
-    );
-  }
-}
       { error: "Failed to delete product" },
       { status: 500 }
     );

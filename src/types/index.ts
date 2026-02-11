@@ -4,7 +4,6 @@ export interface User {
   id: string;
   name: string;
   pin?: string;
-  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,7 +29,6 @@ export interface StorageLocation {
   height: number;
   color: string | null;
   capacity: number | null;
-  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,7 +45,6 @@ export interface ProductVariant {
   category: ProductCategory;
   color: string | null;
   resourceWeight: number | null; // Weight in kg
-  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

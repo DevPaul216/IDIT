@@ -5,6 +5,7 @@ import PageWrapper from "@/components/layout/PageWrapper";
 import { StorageLocation, ProductVariant, ProductCategory } from "@/types";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import EntityModal, { FieldConfig } from "@/components/ui/EntityModal";
 import FloorPlanEditor from "@/components/features/settings/FloorPlanEditor";
 
 const ADMIN_PASSWORD = "6969";
@@ -30,6 +31,7 @@ function LocationRowRecursive({
   setCapacityValue,
   handleSaveCapacity,
   handleDeleteLocation,
+  handleOpenLocationModal,
 }: {
   location: StorageLocation;
   depth: number;
@@ -42,6 +44,7 @@ function LocationRowRecursive({
   setCapacityValue: (val: string) => void;
   handleSaveCapacity: (id: string) => Promise<void>;
   handleDeleteLocation: (id: string) => void;
+  handleOpenLocationModal: (location: StorageLocation) => void;
 }) {
   const children = childrenByParent[location.id] || [];
   const isLeaf = children.length === 0;
@@ -142,6 +145,9 @@ function LocationRowRecursive({
           <Button variant="danger" size="sm" onClick={() => handleDeleteLocation(location.id)}>
             ✕
           </Button>
+          <Button size="sm" variant="ghost" onClick={() => handleOpenLocationModal(location)}>
+            ✎
+          </Button>
         </div>
       </div>
 
@@ -160,6 +166,7 @@ function LocationRowRecursive({
           setCapacityValue={setCapacityValue}
           handleSaveCapacity={handleSaveCapacity}
           handleDeleteLocation={handleDeleteLocation}
+          handleOpenLocationModal={handleOpenLocationModal}
         />
       ))}
     </div>
@@ -187,6 +194,10 @@ export default function SettingsPage() {
   // Capacity editing
   const [editingCapacity, setEditingCapacity] = useState<string | null>(null);
   const [capacityValue, setCapacityValue] = useState("");
+
+  // Entity modal state
+  const [editingEntity, setEditingEntity] = useState<{ type: "product" | "location"; data: ProductVariant | StorageLocation } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const unlocked = sessionStorage.getItem("settings_unlocked");
@@ -391,6 +402,53 @@ export default function SettingsPage() {
       }
     } catch (err) {
       console.error("Failed to create location:", err);
+    }
+  };
+
+  // Entity modal handlers
+  const handleOpenProductModal = (product: ProductVariant | null) => {
+    if (product) {
+      setEditingEntity({ type: "product", data: product });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleOpenLocationModal = (location: StorageLocation | null) => {
+    if (location) {
+      setEditingEntity({ type: "location", data: location });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSaveEntity = async (data: Record<string, unknown>) => {
+    if (!editingEntity) return;
+
+    const { type, data: original } = editingEntity;
+
+    try {
+      const response = await fetch(`/api/${type === "product" ? "products" : "locations"}/${original.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Fehler beim Speichern");
+      }
+
+      const updated = await response.json();
+
+      if (type === "product") {
+        setProducts((prev) => prev.map((p) => (p.id === original.id ? updated : p)));
+      } else {
+        setLocations((prev) => prev.map((l) => (l.id === original.id ? updated : l)));
+      }
+
+      setEditingEntity(null);
+      setIsModalOpen(false);
+    } catch (err) {
+      throw err;
     }
   };
 
@@ -602,7 +660,12 @@ export default function SettingsPage() {
                                 </span>
                               )}
                             </div>
-                            <Button variant="danger" size="sm" onClick={() => handleDeleteProduct(product.id)}>✕</Button>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="ghost" onClick={() => handleOpenProductModal(product)}>
+                                ✎
+                              </Button>
+                              <Button variant="danger" size="sm" onClick={() => handleDeleteProduct(product.id)}>✕</Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -690,6 +753,7 @@ export default function SettingsPage() {
                     setCapacityValue={setCapacityValue}
                     handleSaveCapacity={handleSaveCapacity}
                     handleDeleteLocation={handleDeleteLocation}
+                    handleOpenLocationModal={handleOpenLocationModal}
                   />
                 ))}
               </div>
@@ -710,6 +774,81 @@ export default function SettingsPage() {
             onCreate={handleCreateLocation}
           />
         </div>
+      )}
+
+      {/* Entity Editor Modal */}
+      {editingEntity && editingEntity.type === "product" && (
+        <EntityModal
+          isOpen={isModalOpen}
+          title="Produkt bearbeiten"
+          fields={[
+            { name: "name", label: "Produktname", type: "text", required: true },
+            { name: "code", label: "Kürzel", type: "text", placeholder: "z.B. FM3" },
+            { name: "articleNumber", label: "Artikelnummer (SKU)", type: "text", placeholder: "Offizielle Nummer" },
+            { name: "resourceWeight", label: "Gewicht (kg)", type: "number", placeholder: "z.B. 3.5" },
+            {
+              name: "category",
+              label: "Kategorie",
+              type: "select",
+              options: Object.entries(CATEGORY_LABELS).map(([key, val]) => ({
+                value: key,
+                label: `${val.icon} ${val.label}`,
+              })),
+            },
+            { name: "color", label: "Farbe", type: "color" },
+          ]}
+          initialData={editingEntity.data as unknown as Record<string, unknown>}
+          onSave={handleSaveEntity}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+
+      {editingEntity && editingEntity.type === "location" && (
+        <EntityModal
+          isOpen={isModalOpen}
+          title="Lagerplatz bearbeiten"
+          fields={[
+            { name: "name", label: "Name", type: "text", required: true },
+            { name: "description", label: "Beschreibung", type: "text", placeholder: "Optional" },
+            {
+              name: "parentId",
+              label: "Übergeordneter Bereich",
+              type: "select",
+              options: [
+                { value: "", label: "Hauptbereich" },
+                ...allNonLeafLocations
+                  .filter((l) => l.id !== editingEntity.data.id) // Prevent circular reference
+                  .map((l) => {
+                    const depth = (() => {
+                      let d = 0,
+                        p = l.parentId;
+                      const visited = new Set<string>();
+                      while (p && !visited.has(p)) {
+                        visited.add(p);
+                        const parent = locations.find((loc) => loc.id === p);
+                        if (!parent) break;
+                        d++;
+                        p = parent.parentId;
+                      }
+                      return d;
+                    })();
+                    return {
+                      value: l.id,
+                      label: `${"↳".repeat(depth + 1)} ${l.name}`,
+                    };
+                  }),
+              ],
+            },
+            { name: "color", label: "Farbe", type: "color" },
+            { name: "x", label: "X-Position", type: "number" },
+            { name: "y", label: "Y-Position", type: "number" },
+            { name: "width", label: "Breite", type: "number" },
+            { name: "height", label: "Höhe", type: "number" },
+          ]}
+          initialData={editingEntity.data as unknown as Record<string, unknown>}
+          onSave={handleSaveEntity}
+          onClose={() => setIsModalOpen(false)}
+        />
       )}
     </PageWrapper>
   );

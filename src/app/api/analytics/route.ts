@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
 
     // Get all locations with capacity info
     const locations = await prisma.storageLocation.findMany({
-      where: { isActive: true },
       include: {
         parent: true,
         children: true,
@@ -26,9 +25,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get all products
-    const products = await prisma.productVariant.findMany({
-      where: { isActive: true },
-    });
+    const products = await prisma.productVariant.findMany();
 
     // Get inventory logs for trend analysis
     const recentLogs = await prisma.inventoryLog.findMany({

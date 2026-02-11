@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description, x, y, width, height, color, capacity, isActive } = body;
+    const { name, description, x, y, width, height, color, capacity, parentId } = body;
 
     // If trying to set capacity, verify this is a leaf location (no children)
     if (capacity !== undefined) {
@@ -24,6 +24,39 @@ export async function PUT(
       }
     }
 
+    // If trying to change parentId, verify parent exists and prevent circular references
+    if (parentId !== undefined) {
+      if (parentId) {
+        const parent = await prisma.storageLocation.findUnique({
+          where: { id: parentId },
+        });
+        if (!parent) {
+          return NextResponse.json(
+            { error: "Übergeordneter Bereich nicht gefunden" },
+            { status: 400 }
+          );
+        }
+
+        // Prevent circular reference
+        let current: string | null = parentId;
+        const visited = new Set<string>();
+        while (current) {
+          if (current === id) {
+            return NextResponse.json(
+              { error: "Zirkelbezug erkannt: Dieser Bereich kann nicht sein eigener Übergeordneter sein" },
+              { status: 400 }
+            );
+          }
+          if (visited.has(current)) break;
+          visited.add(current);
+          const parentLoc = await prisma.storageLocation.findUnique({
+            where: { id: current },
+          });
+          current = parentLoc?.parentId ?? null;
+        }
+      }
+    }
+
     const location = await prisma.storageLocation.update({
       where: { id },
       data: {
@@ -35,7 +68,7 @@ export async function PUT(
         ...(height !== undefined && { height }),
         ...(color !== undefined && { color }),
         ...(capacity !== undefined && { capacity }),
-        ...(isActive !== undefined && { isActive }),
+        ...(parentId !== undefined && { parentId: parentId || null }),
       },
     });
 
