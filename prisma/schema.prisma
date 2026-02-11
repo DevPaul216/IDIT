@@ -1,0 +1,139 @@
+// IDIT - Intex Digital Inventory Tool
+// Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// Better Auth Tables
+// ==========================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  name          String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+  snapshots     InventorySnapshot[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  accountId         String
+  providerId        String
+  accessToken       String?
+  refreshToken      String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope             String?
+  idToken           String?
+  password          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ==========================================
+// Inventory Management Tables
+// ==========================================
+
+// Storage locations on the floor (e.g., "UG", "UG > Wachsraum")
+// Supports hierarchical structure with parent-child relationships
+model StorageLocation {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  // Parent location for hierarchical structure
+  parentId    String?
+  parent      StorageLocation?  @relation("LocationHierarchy", fields: [parentId], references: [id])
+  children    StorageLocation[] @relation("LocationHierarchy")
+  // Position for visual floor layout (grid coordinates)
+  x           Int      @default(0)
+  y           Int      @default(0)
+  width       Int      @default(1)
+  height      Int      @default(1)
+  // Visual customization
+  color       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entries     InventoryEntry[]
+}
+
+// Types of products/goods stored on pallets
+model ProductVariant {
+  id          String   @id @default(cuid())
+  name        String
+  code        String?  @unique  // Short code for quick entry
+  color       String?  // Color for visual distinction
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entries     InventoryEntry[]
+}
+
+// A point-in-time snapshot of all inventory (taken after floor walkthrough)
+model InventorySnapshot {
+  id          String   @id @default(cuid())
+  takenAt     DateTime @default(now())
+  takenById   String
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  takenBy     User     @relation(fields: [takenById], references: [id])
+  entries     InventoryEntry[]
+}
+
+// Individual inventory entry within a snapshot
+model InventoryEntry {
+  id          String   @id @default(cuid())
+  snapshotId  String
+  locationId  String
+  productId   String
+  quantity    Int      // Number of pallets
+
+  snapshot    InventorySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  location    StorageLocation   @relation(fields: [locationId], references: [id])
+  product     ProductVariant    @relation(fields: [productId], references: [id])
+
+  @@unique([snapshotId, locationId, productId])
+}

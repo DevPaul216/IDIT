@@ -1,0 +1,20 @@
+# Cursor AI Rules for IDIT
+
+## Working Directory
+The Next.js project is in the `idit` subfolder. Always run commands from:
+c:\Users\pauls\OneDrive\Projekte\IntexSystemPrototype\idit
+
+## Dev Server
+- Only one dev server on port 3000
+- To restart: Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force; npm run dev
+- Use background mode
+
+## Language
+All UI must be in German (Deutsch).
+
+## Stack
+- Next.js 16 (App Router)
+- Prisma 5 (SQLite)
+- Better Auth
+- Tailwind CSS v4
+- TypeScript

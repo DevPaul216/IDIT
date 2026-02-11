@@ -1,0 +1,231 @@
+"use client";
+
+import { StorageLocation, ProductVariant, InventoryInput } from "@/types";
+import QuickNumberInput from "./QuickNumberInput";
+import { useEffect, useRef } from "react";
+
+interface MobileEntrySheetProps {
+  location: StorageLocation;
+  products: ProductVariant[];
+  entries: InventoryInput[];
+  onUpdate: (locationId: string, entries: InventoryInput[]) => void;
+  onClose: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
+  hasNext?: boolean;
+  hasPrev?: boolean;
+}
+
+export default function MobileEntrySheet({
+  location,
+  products,
+  entries,
+  onUpdate,
+  onClose,
+  onNext,
+  onPrev,
+  hasNext,
+  hasPrev,
+}: MobileEntrySheetProps) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  // Create a map for quick lookup
+  const entryMap = new Map(entries.map((e) => [e.productId, e.quantity]));
+
+  const handleQuantityChange = (productId: string, quantity: number) => {
+    const newEntries = products
+      .map((product) => ({
+        locationId: location.id,
+        productId: product.id,
+        quantity: product.id === productId ? quantity : entryMap.get(product.id) || 0,
+      }))
+      .filter((e) => e.quantity > 0);
+
+    onUpdate(location.id, newEntries);
+  };
+
+  const totalPallets = entries.reduce((sum, e) => sum + e.quantity, 0);
+
+  // Handle swipe gestures for navigation
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+
+    let startX = 0;
+    let startY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const diffX = endX - startX;
+      const diffY = endY - startY;
+
+      // Only trigger if horizontal swipe is dominant
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+        if (diffX > 0 && hasPrev && onPrev) {
+          onPrev();
+        } else if (diffX < 0 && hasNext && onNext) {
+          onNext();
+        }
+      }
+    };
+
+    sheet.addEventListener("touchstart", handleTouchStart);
+    sheet.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      sheet.removeEventListener("touchstart", handleTouchStart);
+      sheet.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [hasNext, hasPrev, onNext, onPrev]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-40 animate-fadeIn"
+        onClick={onClose}
+      />
+
+      {/* Bottom Sheet */}
+      <div
+        ref={sheetRef}
+        className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl animate-slideUp max-h-[85vh] overflow-hidden flex flex-col"
+        style={{ backgroundColor: "var(--bg-primary)" }}
+      >
+        {/* Handle bar */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div
+            className="w-12 h-1.5 rounded-full"
+            style={{ backgroundColor: "var(--border-color)" }}
+          />
+        </div>
+
+        {/* Header */}
+        <div
+          className="px-4 pb-3 flex items-center justify-between"
+          style={{ borderBottom: "1px solid var(--border-light)" }}
+        >
+          <div className="flex items-center gap-3">
+            {/* Nav buttons */}
+            <div className="flex gap-1">
+              <button
+                onClick={onPrev}
+                disabled={!hasPrev}
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95 disabled:opacity-30"
+                style={{ backgroundColor: "var(--bg-tertiary)" }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: "var(--text-primary)" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={onNext}
+                disabled={!hasNext}
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95 disabled:opacity-30"
+                style={{ backgroundColor: "var(--bg-tertiary)" }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: "var(--text-primary)" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Location info */}
+            <div>
+              <h2
+                className="text-xl font-bold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {location.name}
+              </h2>
+              {location.description && (
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                  {location.description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Total badge */}
+          <div
+            className="px-4 py-2 rounded-full font-bold text-lg"
+            style={{
+              backgroundColor: totalPallets > 0 ? "var(--accent)" : "var(--bg-tertiary)",
+              color: totalPallets > 0 ? "white" : "var(--text-muted)",
+            }}
+          >
+            {totalPallets} 📦
+          </div>
+        </div>
+
+        {/* Product inputs - scrollable */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {products.length === 0 ? (
+            <div
+              className="text-center py-8"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Keine Produkte konfiguriert.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {products.map((product) => (
+                <QuickNumberInput
+                  key={product.id}
+                  value={entryMap.get(product.id) || 0}
+                  onChange={(value) => handleQuantityChange(product.id, value)}
+                  label={product.code || product.name}
+                  color={product.color || undefined}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer with done button */}
+        <div
+          className="p-4 safe-area-inset-bottom"
+          style={{ borderTop: "1px solid var(--border-light)" }}
+        >
+          <button
+            onClick={onClose}
+            className="w-full h-14 rounded-xl font-bold text-lg transition-all active:scale-[0.98]"
+            style={{
+              backgroundColor: "var(--accent)",
+              color: "white",
+            }}
+          >
+            ✓ Fertig
+          </button>
+        </div>
+      </div>
+
+      {/* Animations */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        .animate-slideUp {
+          animation: slideUp 0.3s ease-out;
+        }
+        .safe-area-inset-bottom {
+          padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+      `}</style>
+    </>
+  );
+}

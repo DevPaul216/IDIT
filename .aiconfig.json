@@ -1,0 +1,13 @@
+{
+  "customInstructions": {
+    "workingDirectory": "c:\\Users\\pauls\\OneDrive\\Projekte\\IntexSystemPrototype\\idit",
+    "devServer": {
+      "port": 3000,
+      "restartCommand": "Get-Process -Name \"node\" -ErrorAction SilentlyContinue | Stop-Process -Force; npm run dev",
+      "runInBackground": true,
+      "note": "Only ONE dev server at a time. Always restart, never start new."
+    },
+    "language": "German (Deutsch)",
+    "stack": ["Next.js 16", "Prisma 5", "SQLite", "Better Auth", "Tailwind CSS v4", "TypeScript"]
+  }
+}
