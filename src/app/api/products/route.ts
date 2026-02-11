@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   try {
     const products = await prisma.productVariant.findMany({
-      where: { isActive: true },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     });
     return NextResponse.json(products);

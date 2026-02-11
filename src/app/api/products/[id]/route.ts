@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, code, color, isActive } = body;
+    const { name, code, color } = body;
 
     const product = await prisma.productVariant.update({
       where: { id },
@@ -17,7 +17,6 @@ export async function PUT(
         ...(name !== undefined && { name }),
         ...(code !== undefined && { code }),
         ...(color !== undefined && { color }),
-        ...(isActive !== undefined && { isActive }),
       },
     });
 
@@ -31,7 +30,7 @@ export async function PUT(
   }
 }
 
-// DELETE product (soft delete)
+// DELETE product (hard delete)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -39,15 +38,19 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    await prisma.productVariant.update({
+    await prisma.productVariant.delete({
       where: { id },
-      data: { isActive: false },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete product:", error);
     return NextResponse.json(
+      { error: "Failed to delete product" },
+      { status: 500 }
+    );
+  }
+}
       { error: "Failed to delete product" },
       { status: 500 }
     );

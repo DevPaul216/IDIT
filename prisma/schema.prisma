@@ -34,12 +34,14 @@ model User {
 // Supports hierarchical structure with parent-child relationships
 model StorageLocation {
   id          String   @id @default(cuid())
-  name        String   @unique
+  name        String
   description String?
   // Parent location for hierarchical structure
   parentId    String?
-  parent      StorageLocation?  @relation("LocationHierarchy", fields: [parentId], references: [id])
+  parent      StorageLocation?  @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children    StorageLocation[] @relation("LocationHierarchy")
+
+  @@unique([name, parentId])  // Name unique only per parent
   // Position for visual floor layout (grid coordinates)
   x           Int      @default(0)
   y           Int      @default(0)
@@ -49,7 +51,6 @@ model StorageLocation {
   color       String?
   // Capacity for leaf storage areas (null means unlimited/not set)
   capacity    Int?
-  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -67,7 +68,6 @@ model ProductVariant {
   category       String   @default("finished")  // raw, finished, packaging
   color          String?  // Color for visual distinction
   resourceWeight Float?   // Weight in kg (e.g., a bale might have 350 kg)
-  isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

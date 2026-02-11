@@ -11,6 +11,19 @@ export async function PUT(
     const body = await request.json();
     const { name, description, x, y, width, height, color, capacity, isActive } = body;
 
+    // If trying to set capacity, verify this is a leaf location (no children)
+    if (capacity !== undefined) {
+      const children = await prisma.storageLocation.findMany({
+        where: { parentId: id },
+      });
+      if (children.length > 0) {
+        return NextResponse.json(
+          { error: "Kapazität kann nur auf Blattknoten (ohne Unterbereiche) gesetzt werden" },
+          { status: 400 }
+        );
+      }
+    }
+
     const location = await prisma.storageLocation.update({
       where: { id },
       data: {
@@ -36,7 +49,7 @@ export async function PUT(
   }
 }
 
-// DELETE location (soft delete by setting isActive to false)
+// DELETE location (hard delete)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -44,9 +57,19 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    await prisma.storageLocation.update({
+    // Check if location has children
+    const children = await prisma.storageLocation.findMany({
+      where: { parentId: id },
+    });
+    if (children.length > 0) {
+      return NextResponse.json(
+        { error: "Dieser Lagerplatz hat Unterbereiche. Bitte zuerst die Unterbereiche löschen." },
+        { status: 400 }
+      );
+    }
+
+    await prisma.storageLocation.delete({
       where: { id },
-      data: { isActive: false },
     });
 
     return NextResponse.json({ success: true });

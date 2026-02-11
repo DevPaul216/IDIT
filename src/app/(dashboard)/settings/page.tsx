@@ -17,6 +17,155 @@ const CATEGORY_LABELS: Record<ProductCategory, { label: string; icon: string }> 
   packaging: { label: "Verpackung", icon: "📋" },
 };
 
+// Recursive location row component for hierarchical display
+function LocationRowRecursive({
+  location,
+  depth,
+  childrenByParent,
+  locations,
+  getCapacitySum,
+  editingCapacity,
+  capacityValue,
+  setEditingCapacity,
+  setCapacityValue,
+  handleSaveCapacity,
+  handleDeleteLocation,
+}: {
+  location: StorageLocation;
+  depth: number;
+  childrenByParent: Record<string, StorageLocation[]>;
+  locations: StorageLocation[];
+  getCapacitySum: (id: string) => number | null;
+  editingCapacity: string | null;
+  capacityValue: string;
+  setEditingCapacity: (id: string | null) => void;
+  setCapacityValue: (val: string) => void;
+  handleSaveCapacity: (id: string) => Promise<void>;
+  handleDeleteLocation: (id: string) => void;
+}) {
+  const children = childrenByParent[location.id] || [];
+  const isLeaf = children.length === 0;
+  const capacity = getCapacitySum(location.id);
+  const paddingLeft = 8 + depth * 1.5;
+
+  return (
+    <div key={location.id}>
+      {/* Location Row */}
+      <div
+        className="p-3 flex items-center justify-between gap-2"
+        style={{
+          borderBottom: "1px solid var(--border-light)",
+          backgroundColor: depth === 0 ? (location.color ? `${location.color}15` : undefined) : "var(--bg-secondary)",
+          paddingLeft: `${paddingLeft}rem`,
+        }}
+      >
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {location.color && <span className="w-3 h-3 rounded-full" style={{ backgroundColor: location.color }} />}
+          <span className={depth === 0 ? "font-semibold" : "font-medium"} style={{ color: "var(--text-primary)" }}>
+            {depth > 0 && "↳ "}{location.name}
+          </span>
+          {!isLeaf && (
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              • {children.length} Unterbereiche
+            </span>
+          )}
+        </div>
+
+        {/* Capacity Display */}
+        <div className="flex items-center gap-2">
+          {isLeaf ? (
+            // Leaf location: editable capacity
+            editingCapacity === location.id ? (
+              <>
+                <Input
+                  type="number"
+                  value={capacityValue}
+                  onChange={(e) => setCapacityValue(e.target.value)}
+                  placeholder="∞"
+                  className="w-20 text-center"
+                  min={0}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveCapacity(location.id);
+                    if (e.key === "Escape") {
+                      setEditingCapacity(null);
+                      setCapacityValue("");
+                    }
+                  }}
+                />
+                <Button size="sm" onClick={() => handleSaveCapacity(location.id)}>
+                  ✓
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditingCapacity(null);
+                    setCapacityValue("");
+                  }}
+                >
+                  ✕
+                </Button>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  setEditingCapacity(location.id);
+                  setCapacityValue(location.capacity?.toString() ?? "");
+                }}
+                className="text-xs px-2 py-1 rounded hover:opacity-80 transition-opacity"
+                style={{
+                  backgroundColor: "var(--bg-tertiary)",
+                  color: "var(--text-muted)",
+                  border: "1px dashed var(--border-light)",
+                }}
+                title="Kapazität bearbeiten"
+              >
+                📦 {location.capacity ?? "∞"}
+              </button>
+            )
+          ) : (
+            // Parent location: show sum of children (read-only)
+            <button
+              disabled
+              className="text-xs px-2 py-1 rounded opacity-60 cursor-not-allowed"
+              style={{
+                backgroundColor: "var(--bg-tertiary)",
+                color: "var(--text-muted)",
+                border: "1px dashed var(--border-light)",
+              }}
+              title="Summe der Unterbereiche"
+            >
+              📦 {capacity ?? "∞"}
+            </button>
+          )}
+          <Button variant="danger" size="sm" onClick={() => handleDeleteLocation(location.id)}>
+            ✕
+          </Button>
+        </div>
+      </div>
+
+      {/* Render children recursively */}
+      {children.map((child) => (
+        <LocationRowRecursive
+          key={child.id}
+          location={child}
+          depth={depth + 1}
+          childrenByParent={childrenByParent}
+          locations={locations}
+          getCapacitySum={getCapacitySum}
+          editingCapacity={editingCapacity}
+          capacityValue={capacityValue}
+          setEditingCapacity={setEditingCapacity}
+          setCapacityValue={setCapacityValue}
+          handleSaveCapacity={handleSaveCapacity}
+          handleDeleteLocation={handleDeleteLocation}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
@@ -69,7 +218,7 @@ export default function SettingsPage() {
     }
   };
 
-  const { parentLocations, childrenByParent } = useMemo(() => {
+  const { parentLocations, childrenByParent, allNonLeafLocations } = useMemo(() => {
     const parents = locations.filter((l) => !l.parentId);
     const children: Record<string, StorageLocation[]> = {};
     locations.forEach((loc) => {
@@ -78,8 +227,51 @@ export default function SettingsPage() {
         children[loc.parentId].push(loc);
       }
     });
-    return { parentLocations: parents, childrenByParent: children };
+    // Non-leaf locations are those that have children
+    const nonLeaf = locations.filter((l) => children[l.id]?.length > 0);
+    return { parentLocations: parents, childrenByParent: children, allNonLeafLocations: nonLeaf };
   }, [locations]);
+
+  // Calculate total capacity of a location (sum of all leaf children)
+  const getCapacitySum = (locationId: string): number | null => {
+    const directChildren = childrenByParent[locationId];
+    if (!directChildren || directChildren.length === 0) {
+      // Leaf node - return its own capacity
+      const loc = locations.find((l) => l.id === locationId);
+      return loc?.capacity ?? null;
+    }
+    // Parent node - sum all children recursively
+    let sum = 0;
+    let hasAny = false;
+    const visited = new Set<string>();
+    
+    const sumRecursive = (id: string): { sum: number; hasCapacity: boolean } => {
+      if (visited.has(id)) return { sum: 0, hasCapacity: false };
+      visited.add(id);
+      
+      const children = childrenByParent[id];
+      if (!children || children.length === 0) {
+        // Leaf node
+        const loc = locations.find((l) => l.id === id);
+        if (loc?.capacity !== null) {
+          return { sum: loc?.capacity ?? 0, hasCapacity: true };
+        }
+        return { sum: 0, hasCapacity: false };
+      }
+      
+      let total = 0;
+      let foundAny = false;
+      for (const child of children) {
+        const result = sumRecursive(child.id);
+        total += result.sum;
+        if (result.hasCapacity) foundAny = true;
+      }
+      return { sum: total, hasCapacity: foundAny };
+    };
+    
+    const result = sumRecursive(locationId);
+    return result.hasCapacity ? result.sum : null;
+  };
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,26 +288,32 @@ export default function SettingsPage() {
   // Location handlers
   const handleAddLocation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLocation.name.trim()) return;
+    const name = newLocation.name.trim();
+    if (!name) {
+      alert("Bitte geben Sie einen Namen ein.");
+      return;
+    }
     setIsAddingLocation(true);
     try {
       const response = await fetch("/api/locations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: newLocation.name,
+          name,
           parentId: newLocation.parentId || null,
-          x: newLocation.x,
-          y: newLocation.y,
         }),
       });
       if (response.ok) {
         const location = await response.json();
         setLocations((prev) => [...prev, location]);
         setNewLocation({ name: "", parentId: "", x: 0, y: 0 });
+      } else {
+        const error = await response.json();
+        alert(`Fehler: ${error.error || "Konnte Lagerplatz nicht hinzufügen"}`);
       }
     } catch (err) {
       console.error("Failed to add location:", err);
+      alert("Fehler beim Hinzufügen des Lagerplatzes");
     } finally {
       setIsAddingLocation(false);
     }
@@ -151,9 +349,13 @@ export default function SettingsPage() {
         setLocations((prev) => prev.map((loc) => (loc.id === id ? { ...loc, capacity } : loc)));
         setEditingCapacity(null);
         setCapacityValue("");
+      } else {
+        const error = await response.json();
+        alert(`Fehler: ${error.error || "Kapazität konnte nicht gespeichert werden"}`);
       }
     } catch (err) {
       console.error("Failed to update capacity:", err);
+      alert("Fehler beim Speichern der Kapazität");
     }
   };
 
@@ -176,7 +378,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCreateLocation = async (location: Omit<StorageLocation, "id" | "createdAt" | "updatedAt" | "isActive">) => {
+  const handleCreateLocation = async (location: Omit<StorageLocation, "id" | "createdAt" | "updatedAt">) => {
     try {
       const response = await fetch("/api/locations", {
         method: "POST",
@@ -441,9 +643,23 @@ export default function SettingsPage() {
                   style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
                 >
                   <option value="">Hauptbereich</option>
-                  {parentLocations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>↳ {loc.name}</option>
-                  ))}
+                  {allNonLeafLocations?.map((loc) => {
+                    const depth = (() => {
+                      let d = 0, p = loc.parentId;
+                      const visited = new Set<string>();
+                      while (p && !visited.has(p)) {
+                        visited.add(p);
+                        const parent = locations.find(l => l.id === p);
+                        if (!parent) break;
+                        d++;
+                        p = parent.parentId;
+                      }
+                      return d;
+                    })();
+                    return (
+                      <option key={loc.id} value={loc.id}>{"↳".repeat(depth + 1)} {loc.name}</option>
+                    );
+                  })}
                 </select>
               </div>
               <Button type="submit" disabled={isAddingLocation || !newLocation.name.trim()}>
@@ -461,71 +677,20 @@ export default function SettingsPage() {
             ) : (
               <div>
                 {parentLocations.map((parent) => (
-                  <div key={parent.id}>
-                    {/* Parent Location */}
-                    <div
-                      className="p-3 flex items-center justify-between"
-                      style={{ borderBottom: "1px solid var(--border-light)", backgroundColor: parent.color ? `${parent.color}15` : undefined }}
-                    >
-                      <div className="flex items-center gap-2">
-                        {parent.color && <span className="w-3 h-3 rounded-full" style={{ backgroundColor: parent.color }} />}
-                        <span className="font-semibold" style={{ color: "var(--text-primary)" }}>{parent.name}</span>
-                        {childrenByParent[parent.id]?.length > 0 && (
-                          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                            • {childrenByParent[parent.id].length} Unterbereiche
-                          </span>
-                        )}
-                      </div>
-                      <Button variant="danger" size="sm" onClick={() => handleDeleteLocation(parent.id)}>✕</Button>
-                    </div>
-
-                    {/* Children */}
-                    {childrenByParent[parent.id]?.map((child) => (
-                      <div
-                        key={child.id}
-                        className="p-3 pl-8 flex items-center justify-between gap-2"
-                        style={{ borderBottom: "1px solid var(--border-light)", backgroundColor: "var(--bg-secondary)" }}
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span style={{ color: "var(--text-muted)" }}>↳</span>
-                          <span className="font-medium" style={{ color: "var(--text-primary)" }}>{child.name}</span>
-                        </div>
-
-                        {/* Capacity */}
-                        <div className="flex items-center gap-2">
-                          {editingCapacity === child.id ? (
-                            <>
-                              <Input
-                                type="number"
-                                value={capacityValue}
-                                onChange={(e) => setCapacityValue(e.target.value)}
-                                placeholder="∞"
-                                className="w-20 text-center"
-                                min={0}
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleSaveCapacity(child.id);
-                                  if (e.key === "Escape") { setEditingCapacity(null); setCapacityValue(""); }
-                                }}
-                              />
-                              <Button size="sm" onClick={() => handleSaveCapacity(child.id)}>✓</Button>
-                              <Button variant="ghost" size="sm" onClick={() => { setEditingCapacity(null); setCapacityValue(""); }}>✕</Button>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => { setEditingCapacity(child.id); setCapacityValue(child.capacity?.toString() ?? ""); }}
-                              className="text-xs px-2 py-1 rounded hover:opacity-80 transition-opacity"
-                              style={{ backgroundColor: "var(--bg-tertiary)", color: "var(--text-muted)", border: "1px dashed var(--border-light)" }}
-                              title="Kapazität bearbeiten"
-                            >
-                              📦 {child.capacity ?? "∞"}
-                            </button>
-                          )}
-                          <Button variant="danger" size="sm" onClick={() => handleDeleteLocation(child.id)}>✕</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <LocationRowRecursive
+                    key={parent.id}
+                    location={parent}
+                    depth={0}
+                    childrenByParent={childrenByParent}
+                    locations={locations}
+                    getCapacitySum={getCapacitySum}
+                    editingCapacity={editingCapacity}
+                    capacityValue={capacityValue}
+                    setEditingCapacity={setEditingCapacity}
+                    setCapacityValue={setCapacityValue}
+                    handleSaveCapacity={handleSaveCapacity}
+                    handleDeleteLocation={handleDeleteLocation}
+                  />
                 ))}
               </div>
             )}

@@ -9,7 +9,7 @@ interface FloorPlanEditorProps {
   locations: StorageLocation[];
   onSave: (changes: { id: string; bounds: Bounds }[]) => void;
   onCreate: (
-    location: Omit<StorageLocation, "id" | "createdAt" | "updatedAt" | "isActive">
+    location: Omit<StorageLocation, "id" | "createdAt" | "updatedAt">
   ) => void;
 }
 

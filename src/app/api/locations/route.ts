@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
 
     const locations = await prisma.storageLocation.findMany({
       where: {
-        isActive: true,
         // If parentId is "null", get root locations; if provided, get children of that parent
         ...(parentId === "null"
           ? { parentId: null }
@@ -21,7 +20,6 @@ export async function GET(request: NextRequest) {
       include: {
         children: includeChildren
           ? {
-              where: { isActive: true },
               orderBy: { name: "asc" },
             }
           : false,
@@ -55,24 +53,46 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, description, x, y, width, height, color, parentId } = body;
 
-    if (!name) {
+    const trimmedName = name?.trim();
+    if (!trimmedName) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    const location = await prisma.storageLocation.create({
-      data: {
-        name,
-        description: description || null,
-        parentId: parentId || null,
-        x: x ?? 0,
-        y: y ?? 0,
-        width: width ?? 1,
-        height: height ?? 1,
-        color: color || null,
-      },
-    });
+    // Check if parent exists (if provided)
+    if (parentId) {
+      const parent = await prisma.storageLocation.findUnique({
+        where: { id: parentId },
+      });
+      if (!parent) {
+        return NextResponse.json({ error: "Parent location not found" }, { status: 400 });
+      }
+    }
 
-    return NextResponse.json(location, { status: 201 });
+    try {
+      const location = await prisma.storageLocation.create({
+        data: {
+          name: trimmedName,
+          description: description || null,
+          parentId: parentId || null,
+          x: x ?? 0,
+          y: y ?? 0,
+          width: width ?? 1,
+          height: height ?? 1,
+          color: color || null,
+        },
+      });
+
+      return NextResponse.json(location, { status: 201 });
+    } catch (error) {
+      // Check for unique constraint violation
+      if (error instanceof Error && error.message.includes("Unique constraint failed")) {
+        return NextResponse.json(
+          { error: "Ein Lagerplatz mit diesem Namen existiert bereits im gleichen Bereich" },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     console.error("Failed to create location:", error);
     return NextResponse.json(
