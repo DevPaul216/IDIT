@@ -56,7 +56,7 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
       const [locRes, prodRes, invRes] = await Promise.all([
         fetch("/api/locations"),
         fetch("/api/products"),
-        fetch("/api/inventory/current"),
+        fetch("/api/inventory"),
       ]);
 
       const locData = locRes.ok ? await locRes.json() : [];
