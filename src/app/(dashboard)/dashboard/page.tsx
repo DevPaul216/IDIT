@@ -305,7 +305,7 @@ export default function DashboardPage() {
         style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-light)" }}
       >
         <h3 className="font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-          🗺️ Lagerbereichs-Explorer
+          🗺️ Zonen-Explorer
         </h3>
         <StorageViewer />
       </div>

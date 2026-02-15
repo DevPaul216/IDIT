@@ -78,7 +78,13 @@ export default function EntityModal({
 
   return (
     <Modal isOpen={isOpen} onClose={() => handleOpenChange(false)}>
-      <div className="p-6 space-y-4">
+      <div 
+        className="p-6 space-y-4 rounded-lg"
+        style={{ 
+          backgroundColor: "var(--bg-primary)",
+          border: "1px solid var(--border-light)"
+        }}
+      >
         <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
           {title}
         </h2>
@@ -136,7 +142,7 @@ export default function EntityModal({
           ))}
 
           {error && (
-            <p className="text-sm rounded-lg p-3" style={{ backgroundColor: "#fee2e2", color: "#dc2626" }}>
+            <p className="text-sm rounded-lg p-3" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444" }}>
               {error}
             </p>
           )}

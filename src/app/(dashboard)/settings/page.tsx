@@ -559,7 +559,7 @@ export default function SettingsPage() {
             color: activeTab === "locations" ? "white" : "var(--text-muted)",
           }}
         >
-          📍 Lagerbereiche ({locations.length})
+          📍 Zonen ({locations.length})
         </button>
         <button
           onClick={() => setActiveTab("floorplan")}
@@ -695,7 +695,7 @@ export default function SettingsPage() {
                 <Input
                   value={newLocation.name}
                   onChange={(e) => setNewLocation((p) => ({ ...p, name: e.target.value }))}
-                  placeholder="Name (z.B. Wachsraum)"
+                  placeholder="Zone (z.B. Wachsraum)"
                 />
               </div>
               <div className="w-40">
@@ -705,7 +705,7 @@ export default function SettingsPage() {
                   className="w-full h-10 px-3 rounded-lg text-sm"
                   style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
                 >
-                  <option value="">Hauptbereich</option>
+                  <option value="">Hauptzone</option>
                   {allNonLeafLocations?.map((loc) => {
                     const depth = (() => {
                       let d = 0, p = loc.parentId;
@@ -735,7 +735,7 @@ export default function SettingsPage() {
           <div className="max-h-[60vh] overflow-y-auto">
             {parentLocations.length === 0 ? (
               <div className="p-8 text-center" style={{ color: "var(--text-muted)" }}>
-                Noch keine Lagerbereiche definiert
+                Noch keine Zonen definiert
               </div>
             ) : (
               <div>
@@ -806,13 +806,13 @@ export default function SettingsPage() {
       {editingEntity && editingEntity.type === "location" && (
         <EntityModal
           isOpen={isModalOpen}
-          title="Lagerplatz bearbeiten"
+          title="Zone bearbeiten"
           fields={[
             { name: "name", label: "Name", type: "text", required: true },
             { name: "description", label: "Beschreibung", type: "text", placeholder: "Optional" },
             {
               name: "parentId",
-              label: "Übergeordneter Bereich",
+              label: "Übergeordnete Zone",
               type: "select",
               options: [
                 { value: "", label: "Hauptbereich" },

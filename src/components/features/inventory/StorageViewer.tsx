@@ -451,7 +451,7 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
         <div className="text-center py-8">
           <div className="text-4xl mb-2">📍</div>
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            Keine Lagerbereiche konfiguriert
+            Keine Zonen konfiguriert
           </p>
         </div>
       )}

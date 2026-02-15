@@ -1,18 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { InventoryLog } from "@/types";
+import { useRefreshOnNavAndFocus } from "@/hooks/useRefreshOnNav";
 
 export default function InventoryHistory() {
   const [logs, setLogs] = useState<InventoryLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "today" | "week">("all");
 
-  useEffect(() => {
-    fetchLogs();
-  }, [filter]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setIsLoading(true);
     try {
       let url = "/api/inventory/logs?limit=100";
@@ -37,7 +34,10 @@ export default function InventoryHistory() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filter]);
+
+  // Refetch when route changes or page comes to focus
+  useRefreshOnNavAndFocus(fetchLogs);
 
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleString("de-DE", {

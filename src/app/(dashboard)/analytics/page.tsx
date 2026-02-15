@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import PageWrapper from "@/components/layout/PageWrapper";
+import { useRefreshOnNavAndFocus } from "@/hooks/useRefreshOnNav";
 
 interface AnalyticsData {
   summary: {
@@ -106,22 +107,24 @@ export default function AnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        const response = await fetch("/api/analytics");
-        if (!response.ok) throw new Error("Failed to fetch analytics");
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        setError("Fehler beim Laden der Analytik");
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchAnalytics();
+  const fetchAnalytics = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/analytics");
+      if (!response.ok) throw new Error("Failed to fetch analytics");
+      const result = await response.json();
+      setData(result);
+    } catch (err) {
+      setError("Fehler beim Laden der Analytik");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Refetch when navigating to this page or when page comes to focus
+  useRefreshOnNavAndFocus(fetchAnalytics);
 
   if (isLoading) {
     return (

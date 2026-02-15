@@ -418,7 +418,7 @@ export default function FloorPlanEditor({ locations, onSave, onCreate }: FloorPl
             style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-light)" }}
             onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4" style={{ color: "var(--text-primary)" }}>
-              Neuer Lagerbereich
+              Neue Zone
             </h3>
             {newAreaBounds && (
               <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>

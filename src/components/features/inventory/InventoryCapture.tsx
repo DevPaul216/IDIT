@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { StorageLocation, ProductVariant, InventoryInput } from "@/types";
 import { useUser } from "@/context/UserContext";
+import { useRefreshOnNav } from "@/hooks/useRefreshOnNav";
 import FloorLayout from "./FloorLayout";
 import MobileEntrySheet from "./MobileEntrySheet";
 
@@ -59,9 +60,15 @@ export default function InventoryCapture() {
     }
   }, []);
 
+  // Refetch when navigating to this page
+  useRefreshOnNav(fetchData);
+
+  // Initial load only (useEffect will be removed as useRefreshOnNav handles it)
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (allLocations.length === 0) {
+      fetchData();
+    }
+  }, []);
 
   // Navigation helpers for moving between locations in current view
   const currentLocationIndex = useMemo(() => {
