@@ -46,7 +46,7 @@ export default function ConfirmDialog({
             {cancelLabel}
           </Button>
           <Button 
-            variant={isDangerous ? "danger" : "default"} 
+            variant={isDangerous ? "danger" : "primary"} 
             onClick={onConfirm}
           >
             {confirmLabel}
