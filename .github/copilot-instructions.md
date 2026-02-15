@@ -21,7 +21,7 @@ Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force; np
 ## Tech Stack
 - Next.js 16 with App Router
 - Prisma 5 with SQLite
-- Better Auth for authentication
+- PIN-based Authentication (custom implementation)
 - Tailwind CSS v4 (uses CSS variables for theming)
 - TypeScript
 
@@ -35,7 +35,9 @@ All UI text must be in **German**. Use terms like:
 
 ## Database Commands
 ```powershell
+npm run build          # Build project (includes prisma generate & migrations)
 npx prisma generate    # After schema changes
 npx prisma migrate dev # Create migrations
 npx prisma db seed     # Seed test data
+npx prisma studio     # Open database GUI
 ```

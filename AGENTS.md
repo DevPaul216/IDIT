@@ -49,11 +49,12 @@ A warehouse inventory tracking tool for Intex. Employees walk the floor, record 
 ## Tech Stack
 | Technology | Version | Notes |
 |------------|---------|-------|
-| Next.js | 16.x | App Router |
-| Prisma | 5.x | SQLite database |
-| Better Auth | 1.4.x | Email/password auth |
+| Next.js | 16.1.6 | App Router |
+| Prisma | 5.22.0 | SQLite database |
+| React | 19.2.3 | UI framework |
 | Tailwind CSS | 4.x | Uses CSS variables for theming |
 | TypeScript | 5.x | Strict mode |
+| Auth | Custom PIN | PIN-based authentication |
 
 ## UI Language: German 🇩🇪
 All user-facing text MUST be in German:

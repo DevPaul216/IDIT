@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IDIT - Intex Digitales Lagerverwaltungstool 🏭
+
+A warehouse inventory tracking tool for Intex. Employees walk the floor, record pallet counts at storage locations, and save point-in-time snapshots.
 
 ## Getting Started
 
-First, run the development server:
+First, ensure you're in the `idit` directory:
+
+```powershell
+cd "c:\Users\pauls\OneDrive\Projekte\IntexSystemPrototype\idit"
+```
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Next.js** 16 with App Router
+- **Prisma** 5 with SQLite database
+- **Tailwind CSS** v4 (CSS variables for theming)
+- **TypeScript** 5
+- **PIN-based Authentication** (custom implementation)
 
-## Learn More
+## Project Setup
 
-To learn more about Next.js, take a look at the following resources:
+### Database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```powershell
+# Generate Prisma client
+npx prisma generate
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Create/run migrations
+npx prisma migrate dev
 
-## Deploy on Vercel
+# Seed database with test data
+npx prisma db seed
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Open database GUI
+npx prisma studio
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Build & Deploy
+
+```powershell
+npm run build
+npm run start
+```
+
+## UI Language
+
+All user-facing text is in **German**:
+- Lagerbestand (inventory)
+- Lagerplatz (storage location)
+- Palette (pallet)
+- Produkt (product)
+- Lagerkonfiguration (settings)
+- Übersicht (dashboard)
+
+## Project Structure
+
+```
+src/
+├── app/               # Next.js App Router pages
+│   ├── (auth)/       # Login/authentication
+│   ├── (dashboard)/  # Main application pages
+│   └── api/          # API routes
+├── components/        # React components
+│   ├── auth/         # Authentication components
+│   ├── features/     # Feature-specific components
+│   ├── layout/       # Layout components
+│   └── ui/           # Reusable UI components
+├── lib/              # Utilities and helpers
+├── types/            # TypeScript type definitions
+prisma/
+├── schema.prisma     # Database schema
+├── seed.ts           # Database seeding script
+└── migrations/       # Database migrations
+```
