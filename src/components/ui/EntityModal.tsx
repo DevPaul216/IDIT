@@ -101,11 +101,12 @@ export default function EntityModal({
                 <select
                   value={String(formData[field.name] ?? "")}
                   onChange={(e) => handleChange(field.name, e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg text-sm"
+                  className="w-full h-10 px-3 rounded-lg text-sm dark:[color-scheme:dark]"
                   style={{
                     backgroundColor: "var(--bg-secondary)",
                     border: "1px solid var(--border-light)",
                     color: "var(--text-primary)",
+                    colorScheme: localStorage.getItem("theme") === "dark" ? "dark" : "light",
                   }}
                   required={field.required}
                 >
@@ -142,7 +143,11 @@ export default function EntityModal({
           ))}
 
           {error && (
-            <p className="text-sm rounded-lg p-3" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444" }}>
+            <p className="text-sm rounded-lg p-3 border" style={{ 
+              backgroundColor: "rgba(239, 68, 68, 0.15)",
+              borderColor: "rgba(239, 68, 68, 0.3)",
+              color: "#fca5a5"
+            }}>
               {error}
             </p>
           )}

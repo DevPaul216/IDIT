@@ -6,6 +6,7 @@ import { StorageLocation, ProductVariant, ProductCategory } from "@/types";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import EntityModal, { FieldConfig } from "@/components/ui/EntityModal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import FloorPlanEditor from "@/components/features/settings/FloorPlanEditor";
 
 const ADMIN_PASSWORD = "6969";
@@ -199,6 +200,21 @@ export default function SettingsPage() {
   const [editingEntity, setEditingEntity] = useState<{ type: "product" | "location"; data: ProductVariant | StorageLocation } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDangerous?: boolean;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    isDangerous: false,
+  });
+
   useEffect(() => {
     const unlocked = sessionStorage.getItem("settings_unlocked");
     if (unlocked === "true") {
@@ -337,15 +353,23 @@ export default function SettingsPage() {
       alert("Dieser Lagerplatz hat Unterbereiche. Bitte zuerst die Unterbereiche löschen.");
       return;
     }
-    if (!confirm(`"${loc?.name}" löschen?`)) return;
-    try {
-      const response = await fetch(`/api/locations/${id}`, { method: "DELETE" });
-      if (response.ok) {
-        setLocations((prev) => prev.filter((l) => l.id !== id));
-      }
-    } catch (err) {
-      console.error("Failed to delete location:", err);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Zone löschen",
+      message: `Möchten Sie die Zone "${loc?.name}" wirklich löschen?`,
+      isDangerous: true,
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`/api/locations/${id}`, { method: "DELETE" });
+          if (response.ok) {
+            setLocations((prev) => prev.filter((l) => l.id !== id));
+          }
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        } catch (err) {
+          console.error("Failed to delete location:", err);
+        }
+      },
+    });
   };
 
   const handleSaveCapacity = async (id: string) => {
@@ -426,10 +450,18 @@ export default function SettingsPage() {
     const { type, data: original } = editingEntity;
 
     try {
+      // Only send fields that are different from original to avoid triggering unnecessary validations
+      const updateData: Record<string, unknown> = {};
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== original[key as keyof typeof original]) {
+          updateData[key] = value;
+        }
+      });
+
       const response = await fetch(`/api/${type === "product" ? "products" : "locations"}/${original.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
@@ -482,15 +514,23 @@ export default function SettingsPage() {
 
   const handleDeleteProduct = async (id: string) => {
     const prod = products.find((p) => p.id === id);
-    if (!confirm(`"${prod?.name}" löschen?`)) return;
-    try {
-      const response = await fetch(`/api/products/${id}`, { method: "DELETE" });
-      if (response.ok) {
-        setProducts((prev) => prev.filter((p) => p.id !== id));
-      }
-    } catch (err) {
-      console.error("Failed to delete product:", err);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Produkt löschen",
+      message: `Möchten Sie das Produkt "${prod?.name}" wirklich löschen?`,
+      isDangerous: true,
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`/api/products/${id}`, { method: "DELETE" });
+          if (response.ok) {
+            setProducts((prev) => prev.filter((p) => p.id !== id));
+          }
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        } catch (err) {
+          console.error("Failed to delete product:", err);
+        }
+      },
+    });
   };
 
   // Password lock screen
@@ -850,6 +890,20 @@ export default function SettingsPage() {
           onClose={() => setIsModalOpen(false)}
         />
       )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel="Löschen"
+        cancelLabel="Abbrechen"
+        isDangerous={confirmDialog.isDangerous}
+        onConfirm={() => {
+          confirmDialog.onConfirm();
+        }}
+        onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
     </PageWrapper>
   );
 }
