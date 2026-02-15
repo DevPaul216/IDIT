@@ -165,6 +165,56 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.totalMovement - a.totalMovement)
       .slice(0, 5);
 
+    // Staff activity (who checked what and when)
+    const staffActivity = new Map<string, { userId: string; userName: string; changes: number; lastActivity: Date }>();
+    recentLogs.forEach((log) => {
+      const key = log.changedById;
+      if (!staffActivity.has(key)) {
+        staffActivity.set(key, { userId: key, userName: log.changedBy?.name || "Unbekannt", changes: 0, lastActivity: log.changedAt });
+      }
+      const activity = staffActivity.get(key)!;
+      activity.changes++;
+      if (log.changedAt > activity.lastActivity) {
+        activity.lastActivity = log.changedAt;
+      }
+    });
+
+    const staffActivityList = Array.from(staffActivity.values())
+      .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
+
+    // Category breakdown
+    const categoryBreakdown = new Map<string, { category: string; quantity: number; productCount: number }>();
+    productTotals.forEach((product) => {
+      const inv = currentInventory.find(i => i.productId === product.id);
+      const cat = inv?.product?.category || "other";
+      if (!categoryBreakdown.has(cat)) {
+        categoryBreakdown.set(cat, { category: cat, quantity: 0, productCount: 0 });
+      }
+      const entry = categoryBreakdown.get(cat)!;
+      entry.quantity += product.totalQuantity;
+      entry.productCount++;
+    });
+
+    const categoryData = Array.from(categoryBreakdown.values())
+      .sort((a, b) => b.quantity - a.quantity);
+
+    // Data freshness - how old is the oldest checked inventory
+    const oldestCheck = currentInventory.length > 0
+      ? currentInventory.reduce((oldest, curr) => 
+          curr.lastCheckedAt < oldest.lastCheckedAt 
+            ? curr 
+            : oldest
+        )
+      : null;
+
+    const newestCheck = currentInventory.length > 0
+      ? currentInventory.reduce((newest, curr) => 
+          curr.lastCheckedAt > newest.lastCheckedAt 
+            ? curr 
+            : newest
+        )
+      : null;
+
     return NextResponse.json({
       summary: {
         totalItems,
@@ -179,6 +229,12 @@ export async function GET(request: NextRequest) {
       activityByDay: Object.values(activityByDay),
       stockHistory,
       topMovers,
+      staffActivity: staffActivityList,
+      categoryData,
+      dataFreshness: {
+        oldestCheckAt: oldestCheck?.lastCheckedAt || null,
+        newestCheckAt: newestCheck?.lastCheckedAt || null,
+      },
     });
   } catch (error) {
     console.error("Failed to fetch analytics:", error);

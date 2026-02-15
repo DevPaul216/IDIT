@@ -34,15 +34,13 @@ export interface StorageLocation {
 }
 
 // Product variant / type of goods
-// Categories: "raw" (Rohmaterial), "finished" (Fertigprodukte), "packaging" (Verpackung), "intermediate" (Zwischenprodukte), "other" (Sonstiges)
-export type ProductCategory = "raw" | "finished" | "packaging" | "intermediate" | "other";
-
+// Category is a string - configure display labels in lib/categories.ts
 export interface ProductVariant {
   id: string;
   name: string;
   code: string | null;
   articleNumber: string | null; // Official article/SKU number
-  category: ProductCategory;
+  category: string;
   color: string | null;
   resourceWeight: number | null; // Weight in kg
   createdAt: Date;

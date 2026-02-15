@@ -134,6 +134,51 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
     return map;
   }, [inventory, products]);
 
+  // Calculate total capacity for a location (recursively sum leaf capacities)
+  const getTotalCapacity = useCallback((locationId: string): number | null => {
+    const location = allLocations.find((l) => l.id === locationId);
+    if (!location) return null;
+    
+    const hasChildren = (location.childCount || 0) > 0;
+    
+    if (!hasChildren) {
+      // Leaf node - return its own capacity
+      return location.capacity ?? null;
+    }
+    
+    // Parent node - sum all children recursively
+    let sum = 0;
+    let hasAny = false;
+    const visited = new Set<string>();
+    
+    const sumRecursive = (id: string): { sum: number; hasCapacity: boolean } => {
+      if (visited.has(id)) return { sum: 0, hasCapacity: false };
+      visited.add(id);
+      
+      const children = allLocations.filter((l) => l.parentId === id);
+      if (children.length === 0) {
+        // Leaf node
+        const loc = allLocations.find((l) => l.id === id);
+        if (loc?.capacity !== null && loc?.capacity !== undefined) {
+          return { sum: loc.capacity, hasCapacity: true };
+        }
+        return { sum: 0, hasCapacity: false };
+      }
+      
+      let total = 0;
+      let foundAny = false;
+      for (const child of children) {
+        const result = sumRecursive(child.id);
+        total += result.sum;
+        if (result.hasCapacity) foundAny = true;
+      }
+      return { sum: total, hasCapacity: foundAny };
+    };
+    
+    const result = sumRecursive(locationId);
+    return result.hasCapacity ? result.sum : null;
+  }, [allLocations]);
+
   // Calculate aggregated inventory for parent locations
   const getAggregatedInventory = useCallback((locationId: string): LocationInventory => {
     const location = allLocations.find((l) => l.id === locationId);
@@ -188,8 +233,8 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
     const inv = getAggregatedInventory(location.id);
     const total = inv.totalPallets;
     const hasChildren = (location.childCount || 0) > 0;
-    const capacity = location.capacity;
-    const utilization = capacity ? (total / capacity) * 100 : null;
+    const totalCapacity = getTotalCapacity(location.id);
+    const utilization = totalCapacity ? (total / totalCapacity) * 100 : null;
     
     let bgColor = hasChildren ? "var(--bg-secondary)" : "var(--bg-tertiary)";
     let textColor = "var(--text-muted)";
@@ -376,8 +421,8 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
               const style = getLocationStyle(location, isSelected);
               const hasChildren = (location.childCount || 0) > 0;
               const freshness = getFreshnessInfo(inv.lastCheckedAt);
-              const capacity = location.capacity;
-              const utilization = capacity ? Math.min((inv.totalPallets / capacity) * 100, 100) : null;
+              const totalCapacity = getTotalCapacity(location.id);
+              const utilization = totalCapacity ? Math.min((inv.totalPallets / totalCapacity) * 100, 100) : null;
 
               return (
                 <button
@@ -431,8 +476,8 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
                     </>
                   )}
                   
-                  {/* Capacity bar for leaf locations */}
-                  {!hasChildren && utilization !== null && (
+                  {/* Capacity bar - show for all locations with capacity */}
+                  {utilization !== null && (
                     <div className="absolute bottom-1 left-1 right-1 h-1 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.3)" }}>
                       <div
                         className="h-full rounded-full"
@@ -480,10 +525,10 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
           </div>
           
           {(() => {
-            const inv = inventoryByLocation[selectedLocation.id];
-            const freshness = getFreshnessInfo(inv?.lastCheckedAt || null);
-            const capacity = selectedLocation.capacity;
-            const utilization = capacity && inv ? Math.min((inv.totalPallets / capacity) * 100, 100) : null;
+            const inv = getAggregatedInventory(selectedLocation.id);
+            const freshness = getFreshnessInfo(inv.lastCheckedAt);
+            const totalCapacity = getTotalCapacity(selectedLocation.id);
+            const utilization = totalCapacity && inv ? Math.min((inv.totalPallets / totalCapacity) * 100, 100) : null;
             
             return (
               <div className="space-y-3">
@@ -514,7 +559,7 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span style={{ color: "var(--text-muted)" }}>Auslastung</span>
                       <span style={{ color: utilization > 90 ? "#ef4444" : utilization > 70 ? "#f59e0b" : "#22c55e" }}>
-                        {Math.round(utilization)}% ({inv?.totalPallets || 0}/{capacity})
+                        {Math.round(utilization)}% ({inv?.totalPallets || 0}/{totalCapacity})
                       </span>
                     </div>
                     <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--bg-secondary)" }}>

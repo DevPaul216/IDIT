@@ -1,13 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTheme } from "@/components/ui/ThemeProvider";
 import { InventoryLog } from "@/types";
 import { useRefreshOnNavAndFocus } from "@/hooks/useRefreshOnNav";
 
 export default function InventoryHistory() {
+  const { theme } = useTheme();
   const [logs, setLogs] = useState<InventoryLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "today" | "week">("all");
+  
+  const isClassic = theme === "classic";
+  const showSymbols = !isClassic;
+  const showColors = !isClassic;
 
   const fetchLogs = useCallback(async () => {
     setIsLoading(true);
@@ -76,15 +82,15 @@ export default function InventoryHistory() {
 
   const getChangeIndicator = (prev: number | null, next: number) => {
     if (prev === null) {
-      return { emoji: "🆕", text: `Neu: ${next}`, color: "#3b82f6" };
+      return { emoji: "🆕", text: `Neu: ${next}`, color: "#3b82f6", simple: "NEW" };
     }
     const diff = next - prev;
     if (diff > 0) {
-      return { emoji: "📈", text: `+${diff}`, color: "#22c55e" };
+      return { emoji: "📈", text: `+${diff}`, color: "#22c55e", simple: "↑" };
     } else if (diff < 0) {
-      return { emoji: "📉", text: `${diff}`, color: "#ef4444" };
+      return { emoji: "📉", text: `${diff}`, color: "#ef4444", simple: "↓" };
     }
-    return { emoji: "↔️", text: "0", color: "#6b7280" };
+    return { emoji: "↔️", text: "0", color: "#6b7280", simple: "=" };
   };
 
   if (isLoading) {
@@ -146,7 +152,7 @@ export default function InventoryHistory() {
           className="rounded-xl p-8 text-center"
           style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-light)" }}
         >
-          <div className="text-5xl mb-4">📭</div>
+          {showSymbols && <div className="text-5xl mb-4">📭</div>}
           <h3 className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
             Keine Änderungen
           </h3>
@@ -189,7 +195,7 @@ export default function InventoryHistory() {
                       }}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-lg">{change.emoji}</span>
+                        <span className="text-lg">{showSymbols ? change.emoji : change.simple}</span>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>
@@ -208,7 +214,7 @@ export default function InventoryHistory() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-sm" style={{ color: change.color }}>
+                        <div className="font-bold text-sm" style={{ color: showColors ? change.color : "var(--text-primary)" }}>
                           {change.text}
                         </div>
                         <div className="text-xs" style={{ color: "var(--text-muted)" }}>

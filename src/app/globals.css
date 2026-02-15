@@ -41,50 +41,118 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3);
 }
 
-/* Classic theme - MS Access / Windows 95 style */
+/* Classic theme - Windows 2000 authentic */
 .classic {
-  --bg-primary: #d4d0c8;
-  --bg-secondary: #ece9d8;
+  --bg-primary: #dfdfdf;
+  --bg-secondary: #e8e8e8;
   --bg-tertiary: #c0c0c0;
   --text-primary: #000000;
-  --text-secondary: #222222;
-  --text-muted: #555555;
+  --text-secondary: #000000;
+  --text-muted: #808080;
   --text-placeholder: #808080;
   --border-color: #808080;
-  --border-light: #a0a0a0;
+  --border-light: #dfdfdf;
   --input-bg: #ffffff;
   --accent: #000080;
   --accent-primary: #000080;
   --accent-secondary: #000066;
   --accent-gradient: none;
-  --radius: 2px;
-  --radius-sm: 2px;
-  --shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #ffffff;
-  --shadow-lg: inset -1px -1px 0 #808080, inset 1px 1px 0 #ffffff;
+  --radius: 0px;
+  --radius-sm: 0px;
+  --shadow: none;
+  --shadow-lg: none;
 }
 
+/* Windows 2000 button - beveled 3D effect */
 .classic button {
-  border-radius: 2px !important;
+  border-radius: 0 !important;
+  border: 2px solid;
+  border-color: #dfdfdf #808080 #808080 #dfdfdf;
+  background: #c0c0c0;
+  padding: 3px 12px !important;
+  font-size: 11px !important;
+  font-family: 'MS Sans Serif', Segoe UI, system-ui, sans-serif !important;
+  color: #000000;
+  min-width: 50px;
 }
 
+.classic button:active {
+  border-color: #808080 #dfdfdf #dfdfdf #808080;
+  transform: translateY(1px) translateX(1px);
+}
+
+.classic button:hover:not(:active) {
+  background: #c0c0c0;
+}
+
+.classic button:disabled {
+  color: #dfdfdf;
+  text-shadow: 1px 1px #ffffff;
+}
+
+/* Windows 2000 inputs */
 .classic input,
 .classic textarea,
 .classic select {
   border-radius: 0 !important;
-  border: 1px solid #7f9db9 !important;
-  box-shadow: inset 1px 1px 0 #808080 !important;
+  border: 2px solid;
+  border-color: #808080 #dfdfdf #dfdfdf #808080;
+  background: #ffffff !important;
+  padding: 2px 3px !important;
+  font-size: 11px !important;
+  font-family: 'MS Sans Serif', Segoe UI, system-ui, sans-serif !important;
 }
 
 .classic input:focus,
 .classic textarea:focus,
 .classic select:focus {
-  border-color: #000080 !important;
-  box-shadow: inset 1px 1px 0 #808080 !important;
+  border-color: #000080 #dfdfdf #dfdfdf #000080 !important;
+  box-shadow: none !important;
+  outline: none;
+}
+
+/* Windows 2000 containers/panels */
+.classic > div,
+.classic [style*="border"],
+.classic [style*="background"] {
+  border-radius: 0 !important;
+}
+
+/* Reduce spacing */
+.classic body,
+.classic * {
+  --tw-space-y-4: 0.5rem;
+  --tw-space-x-4: 0.5rem;
+}
+
+/* Table styling for classic */
+.classic table {
+  font-size: 11px;
+  font-family: 'MS Sans Serif', Segoe UI, system-ui, sans-serif;
+  border-collapse: collapse;
+}
+
+.classic table td,
+.classic table th {
+  padding: 2px 4px;
+  border: 1px solid #c0c0c0;
+}
+
+.classic table thead {
+  background: #c0c0c0;
+  border: 1px solid;
+  border-color: #dfdfdf #808080 #808080 #dfdfdf;
+}
+
+.classic select,
+.classic input[type="color"] {
+  border-radius: 0 !important;
 }
 
 /* Theme-aware button styles */
 .btn-primary {
   background: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
+  border-radius: var(--radius-sm);
 }
 
 .btn-primary:hover {
@@ -93,28 +161,42 @@
 
 .btn-danger {
   background: linear-gradient(135deg, #ef4444 0%, #ec4899 100%);
+  border-radius: var(--radius-sm);
 }
 
 .btn-danger:hover {
   background: linear-gradient(135deg, #dc2626 0%, #db2777 100%);
 }
 
+/* Classic button overrides - Windows 2000 style */
 .classic .btn-primary {
-  background: #000080;
-  border: 2px outset #c0c0c0;
+  background: #c0c0c0 !important;
+  border: 2px solid !important;
+  border-color: #dfdfdf #808080 #808080 #dfdfdf !important;
+  color: #000000 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
 }
 
-.classic .btn-primary:hover {
-  background: #0000a0;
+.classic .btn-primary:hover:not(:active) {
+  background: #c0c0c0 !important;
 }
 
 .classic .btn-primary:active {
-  border-style: inset;
+  border-color: #808080 #dfdfdf #dfdfdf #808080 !important;
+  transform: translateY(1px) translateX(1px);
 }
 
 .classic .btn-danger {
-  background: #800000;
-  border: 2px outset #c0c0c0;
+  background: #c0c0c0 !important;
+  border: 2px solid !important;
+  border-color: #dfdfdf #808080 #808080 #dfdfdf !important;
+  color: #000000 !important;
+}
+
+.classic .btn-danger:active {
+  border-color: #808080 #dfdfdf #dfdfdf #808080 !important;
+  transform: translateY(1px) translateX(1px);
 }
 
 .classic .btn-danger:hover {
@@ -129,6 +211,19 @@
 .sidebar-logo {
   background: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.classic .sidebar-logo {
+  background: #c0c0c0 !important;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080 !important;
+  border-radius: 0 !important;
+  border: 2px solid;
+  border-color: #dfdfdf #808080 #808080 #dfdfdf;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .classic .sidebar-logo {
@@ -141,7 +236,13 @@
   background-color: var(--bg-tertiary);
 }
 
+.classic .nav-link:hover {
+  background: #b0aca0;
+}
+
 .classic .nav-link-active {
+  background: #000080 !important;
+  color: #ffffff !important;
   border: 1px solid var(--border-color);
 }
 
@@ -149,12 +250,14 @@
 .user-avatar {
   background: linear-gradient(135deg, #fb923c 0%, #ef4444 100%);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+  border-radius: var(--radius-sm);
 }
 
 .classic .user-avatar {
-  background: #000080;
-  box-shadow: none;
-  border: 1px solid #808080;
+  background: #c0c0c0 !important;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080 !important;
+  border: none !important;
+  border-radius: 0 !important;
 }
 
 * {

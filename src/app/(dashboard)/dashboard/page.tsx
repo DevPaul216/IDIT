@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useUser } from "@/context/UserContext";
+import { useTheme } from "@/components/ui/ThemeProvider";
 import PageWrapper from "@/components/layout/PageWrapper";
 import Link from "next/link";
 import StorageViewer from "@/components/features/inventory/StorageViewer";
+import { getCategoryInfo, CATEGORY_ORDER } from "@/lib/categories";
 
 interface InventorySummary {
   totalPallets: number;
@@ -43,18 +45,17 @@ function getFreshnessInfo(lastChecked: string | null): { label: string; color: s
   }
 }
 
-const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
-  raw: { label: "Rohmaterial", icon: "🧵" },
-  intermediate: { label: "Zwischenprodukte", icon: "⚙️" },
-  finished: { label: "Fertigprodukte", icon: "📦" },
-  packaging: { label: "Verpackung", icon: "🏷️" },
-  other: { label: "Sonstiges", icon: "📋" },
-};
-
 export default function DashboardPage() {
   const { user } = useUser();
+  const { theme } = useTheme();
   const [summary, setSummary] = useState<InventorySummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Check if we're in classic theme (no symbols/colors)
+  const isClassic = theme === "classic";
+  // In classic mode, show only text; in light/dark modes show emoji and colors
+  const showSymbols = !isClassic;
+  const showColors = !isClassic;
 
   useEffect(() => {
     fetchSummary();
@@ -75,168 +76,118 @@ export default function DashboardPage() {
 
   // Group products by category
   const productsByCategory = summary?.byProduct.reduce((acc, item) => {
-    const category = item.product.category || "finished";
+    const category = item.product.category || "other";
     if (!acc[category]) acc[category] = [];
     acc[category].push(item);
     return acc;
   }, {} as Record<string, typeof summary.byProduct>) || {};
+
+  // Get ordered list of categories that have products
+  const orderedCategories = useMemo(() => {
+    const cats = Object.keys(productsByCategory);
+    // Sort by CATEGORY_ORDER, unknown categories at the end
+    return cats.sort((a, b) => {
+      const aIndex = CATEGORY_ORDER.indexOf(a);
+      const bIndex = CATEGORY_ORDER.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+  }, [productsByCategory]);
 
   return (
     <PageWrapper
       title="Übersicht"
       description={`Willkommen${user?.name ? `, ${user.name}` : ""}!`}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Product Overview - Raw Materials & Finished Products */}
+      <div className="max-w-4xl mx-auto space-y-4">
+        {/* Product Overview */}
         <div
-          className="rounded-xl p-5 lg:col-span-1"
+          className="p-4"
           style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-light)" }}
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold" style={{ color: "var(--text-primary)" }}>
-              📦 Produktübersicht
+              {showSymbols && "📦 "}Produktübersicht
             </h3>
             <button
               onClick={() => fetchSummary()}
-              className="p-2 rounded-lg transition-all hover:scale-105 active:scale-95"
+              className="p-2 transition-opacity hover:opacity-70"
               style={{ backgroundColor: "var(--bg-tertiary)" }}
+              title="Aktualisieren"
             >
-              🔄
+              {showSymbols ? "🔄" : "↻"}
             </button>
           </div>
           
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+              <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
             </div>
           ) : summary && summary.byProduct.length > 0 ? (
-            <div className="space-y-4 max-h-[500px] overflow-y-auto">
-              {/* Raw Materials Section */}
-              {productsByCategory.raw && productsByCategory.raw.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2 sticky top-0 py-1" style={{ backgroundColor: "var(--bg-primary)" }}>
-                    <span>{CATEGORY_LABELS.raw.icon}</span>
-                    <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
-                      {CATEGORY_LABELS.raw.label}
-                    </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {orderedCategories.map((categoryKey) => {
+                const items = productsByCategory[categoryKey];
+                if (!items || items.length === 0) return null;
+                const categoryInfo = getCategoryInfo(categoryKey);
+                
+                return (
+                  <div
+                    key={categoryKey}
+                    className="rounded-lg overflow-hidden"
+                    style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-light)" }}
+                  >
+                    {/* Category Header */}
+                    <div
+                      className="px-3 py-2 font-medium text-sm"
+                      style={{ backgroundColor: "var(--bg-tertiary)", color: "var(--text-muted)" }}
+                    >
+                      {showSymbols && <span>{categoryInfo.icon} </span>}
+                      {categoryInfo.label}
+                    </div>
+                    
+                    {/* Category Products Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <tbody>
+                          {items
+                            .sort((a, b) => b.totalPallets - a.totalPallets)
+                            .map((item, idx) => (
+                              <tr key={item.product.id} style={{ borderBottom: idx < items.length - 1 ? "1px solid var(--border-light)" : undefined }}>
+                                <td className="px-2 py-1.5">
+                                  <div className="flex items-center gap-1.5">
+                                    {showColors && item.product.color && (
+                                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.product.color }} />
+                                    )}
+                                    <span style={{ color: "var(--text-primary)" }} className="truncate">
+                                      {item.product.name}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-2 py-1.5 text-right font-bold whitespace-nowrap" style={{ color: showColors && item.product.color ? item.product.color : "var(--accent)" }}>
+                                  {item.totalPallets}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    {productsByCategory.raw
-                      .sort((a, b) => b.totalPallets - a.totalPallets)
-                      .map((item) => (
-                        <div
-                          key={item.product.id}
-                          className="flex items-center justify-between p-2 rounded-lg"
-                          style={{ backgroundColor: "var(--bg-tertiary)" }}
-                        >
-                          <div className="flex items-center gap-2">
-                            {item.product.color && (
-                              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.product.color }} />
-                            )}
-                            <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                              {item.product.name}
-                            </span>
-                          </div>
-                          <span
-                            className="text-sm font-bold px-2 py-1 rounded"
-                            style={{ backgroundColor: item.product.color || "var(--accent)", color: "white" }}
-                          >
-                            {item.totalPallets}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Finished Products Section */}
-              {productsByCategory.finished && productsByCategory.finished.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2 sticky top-0 py-1" style={{ backgroundColor: "var(--bg-primary)" }}>
-                    <span>{CATEGORY_LABELS.finished.icon}</span>
-                    <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
-                      {CATEGORY_LABELS.finished.label}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    {productsByCategory.finished
-                      .sort((a, b) => b.totalPallets - a.totalPallets)
-                      .map((item) => (
-                        <div
-                          key={item.product.id}
-                          className="flex items-center justify-between p-2 rounded-lg"
-                          style={{ backgroundColor: "var(--bg-tertiary)" }}
-                        >
-                          <div className="flex items-center gap-2">
-                            {item.product.color && (
-                              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.product.color }} />
-                            )}
-                            <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                              {item.product.name}
-                            </span>
-                          </div>
-                          <span
-                            className="text-sm font-bold px-2 py-1 rounded"
-                            style={{ backgroundColor: item.product.color || "var(--accent)", color: "white" }}
-                          >
-                            {item.totalPallets}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Packaging Section */}
-              {productsByCategory.packaging && productsByCategory.packaging.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2 sticky top-0 py-1" style={{ backgroundColor: "var(--bg-primary)" }}>
-                    <span>{CATEGORY_LABELS.packaging.icon}</span>
-                    <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
-                      {CATEGORY_LABELS.packaging.label}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    {productsByCategory.packaging
-                      .sort((a, b) => b.totalPallets - a.totalPallets)
-                      .map((item) => (
-                        <div
-                          key={item.product.id}
-                          className="flex items-center justify-between p-2 rounded-lg"
-                          style={{ backgroundColor: "var(--bg-tertiary)" }}
-                        >
-                          <div className="flex items-center gap-2">
-                            {item.product.color && (
-                              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.product.color }} />
-                            )}
-                            <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                              {item.product.name}
-                            </span>
-                          </div>
-                          <span
-                            className="text-sm font-bold px-2 py-1 rounded"
-                            style={{ backgroundColor: item.product.color || "var(--accent)", color: "white" }}
-                          >
-                            {item.totalPallets}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-2">📭</div>
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            <div className="text-center py-6">
+              <p className="text-sm mb-3" style={{ color: "var(--text-muted)" }}>
                 Noch keine Daten erfasst
               </p>
               <Link
                 href="/inventory"
-                className="inline-flex items-center mt-3 px-4 py-2 rounded-lg font-medium text-sm transition-all"
+                className="inline-flex items-center px-3 py-1.5 font-medium text-sm"
                 style={{ backgroundColor: "var(--accent)", color: "white" }}
               >
-                Jetzt erfassen
+                Erfassen →
               </Link>
             </div>
           )}
@@ -244,72 +195,71 @@ export default function DashboardPage() {
 
         {/* Location Status */}
         <div
-          className="rounded-xl p-5 lg:col-span-1"
+          className="p-4"
           style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-light)" }}
         >
-          <h3 className="font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            📍 Lagerplatzstatus
+          <h3 className="font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
+            {showSymbols && "📍 "}Lagerplätze
           </h3>
           
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+              <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
             </div>
           ) : summary && summary.byLocation.length > 0 ? (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {summary.byLocation
-                .sort((a, b) => b.totalPallets - a.totalPallets)
-                .map((item) => {
-                  const locFreshness = getFreshnessInfo(item.lastCheckedAt);
-                  return (
-                    <div
-                      key={item.location.id}
-                      className="flex items-center justify-between p-3 rounded-lg"
-                      style={{ backgroundColor: "var(--bg-tertiary)" }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span>{locFreshness.emoji}</span>
-                        <div>
-                          <span className="text-sm font-medium block" style={{ color: "var(--text-primary)" }}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ borderBottom: "2px solid var(--border-light)" }}>
+                    <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--text-muted)" }}>Lagerplatz</th>
+                    <th className="px-3 py-2 text-center font-medium" style={{ color: "var(--text-muted)" }}>Paletten</th>
+                    <th className="px-3 py-2 text-center font-medium" style={{ color: "var(--text-muted)" }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.byLocation
+                    .sort((a, b) => b.totalPallets - a.totalPallets)
+                    .map((item) => {
+                      const locFreshness = getFreshnessInfo(item.lastCheckedAt);
+                      return (
+                        <tr key={item.location.id} style={{ borderBottom: "1px solid var(--border-light)" }}>
+                          <td className="px-3 py-2" style={{ color: "var(--text-primary)" }}>
                             {item.location.name}
-                          </span>
-                          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                            {locFreshness.label}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                          {item.totalPallets}
-                        </span>
-                        <span className="text-xs block" style={{ color: "var(--text-muted)" }}>
-                          Paletten
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+                          </td>
+                          <td className="px-3 py-2 text-center font-bold" style={{ color: "var(--text-primary)" }}>
+                            {item.totalPallets}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "rgba(0,0,0,0.05)", color: showColors ? locFreshness.color : "var(--text-muted)" }}>
+                              {showSymbols && locFreshness.emoji + " "}
+                              {locFreshness.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
             </div>
           ) : (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-2">📍</div>
+            <div className="text-center py-6">
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                 Keine Lagerplätze erfasst
               </p>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Storage Area Viewer */}
-      <div
-        className="rounded-xl p-5 mt-4"
-        style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-light)" }}
-      >
-        <h3 className="font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-          🗺️ Zonen-Explorer
-        </h3>
-        <StorageViewer />
+        {/* Storage Area Viewer */}
+        <div
+          className="p-4"
+          style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-light)" }}
+        >
+          <h3 className="font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
+            {showSymbols && "🗺️ "}Zonen-Explorer
+          </h3>
+          <StorageViewer />
+        </div>
       </div>
     </PageWrapper>
   );

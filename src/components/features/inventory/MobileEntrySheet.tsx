@@ -1,6 +1,7 @@
 "use client";
 
-import { StorageLocation, ProductVariant, InventoryInput, ProductCategory } from "@/types";
+import { StorageLocation, ProductVariant, InventoryInput } from "@/types";
+import { getCategoriesFromProducts, CategoryConfig } from "@/lib/categories";
 import QuickNumberInput from "./QuickNumberInput";
 import { useEffect, useRef, useState, useMemo } from "react";
 
@@ -116,14 +117,7 @@ function TableNumpad({
   );
 }
 
-// Category labels for display (no "all" option)
-const CATEGORY_TABS: { key: ProductCategory; label: string; icon: string }[] = [
-  { key: "raw", label: "Rohmaterial", icon: "🧵" },
-  { key: "intermediate", label: "Zwischenprodukte", icon: "⚙️" },
-  { key: "finished", label: "Fertigprodukte", icon: "📦" },
-  { key: "packaging", label: "Verpackung", icon: "🏷️" },
-  { key: "other", label: "Sonstiges", icon: "📋" },
-];
+// Categories are derived dynamically from products using lib/categories.ts
 
 interface MobileEntrySheetProps {
   location: StorageLocation;
@@ -153,17 +147,15 @@ export default function MobileEntrySheet({
   const sheetRef = useRef<HTMLDivElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Get categories dynamically from products
+  const categoryTabs = useMemo(() => getCategoriesFromProducts(products), [products]);
+  
   // Find first category with products as default
   const defaultCategory = useMemo(() => {
-    for (const tab of CATEGORY_TABS) {
-      if (products.some((p) => p.category === tab.key)) {
-        return tab.key;
-      }
-    }
-    return "raw";
-  }, [products]);
+    return categoryTabs[0]?.key || "other";
+  }, [categoryTabs]);
   
-  const [activeCategory, setActiveCategory] = useState<ProductCategory>(defaultCategory);
+  const [activeCategory, setActiveCategory] = useState<string>(defaultCategory);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
@@ -376,7 +368,7 @@ export default function MobileEntrySheet({
             {/* Category tabs - only show in grid mode */}
             {viewMode === "grid" && (
               <div className="flex gap-2 overflow-x-auto">
-                {CATEGORY_TABS.map((tab) => {
+                {categoryTabs.map((tab) => {
                   const count = categoryCounts[tab.key] || 0;
                   const isActive = activeCategory === tab.key;
                   if (count === 0) return null;

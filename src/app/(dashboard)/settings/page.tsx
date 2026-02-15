@@ -1,23 +1,19 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useTheme } from "@/components/ui/ThemeProvider";
 import PageWrapper from "@/components/layout/PageWrapper";
-import { StorageLocation, ProductVariant, ProductCategory } from "@/types";
+import { StorageLocation, ProductVariant } from "@/types";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import EntityModal, { FieldConfig } from "@/components/ui/EntityModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import FloorPlanEditor from "@/components/features/settings/FloorPlanEditor";
+import { getOrderedCategories, getCategoryInfo } from "@/lib/categories";
 
 const ADMIN_PASSWORD = "6969";
 
 type Tab = "products" | "locations" | "floorplan";
-
-const CATEGORY_LABELS: Record<ProductCategory, { label: string; icon: string }> = {
-  raw: { label: "Rohmaterial", icon: "🧵" },
-  finished: { label: "Fertigprodukte", icon: "📦" },
-  packaging: { label: "Verpackung", icon: "📋" },
-};
 
 // Recursive location row component for hierarchical display
 function LocationRowRecursive({
@@ -33,6 +29,8 @@ function LocationRowRecursive({
   handleSaveCapacity,
   handleDeleteLocation,
   handleOpenLocationModal,
+  showSymbols,
+  showColors,
 }: {
   location: StorageLocation;
   depth: number;
@@ -46,6 +44,8 @@ function LocationRowRecursive({
   handleSaveCapacity: (id: string) => Promise<void>;
   handleDeleteLocation: (id: string) => void;
   handleOpenLocationModal: (location: StorageLocation) => void;
+  showSymbols: boolean;
+  showColors: boolean;
 }) {
   const children = childrenByParent[location.id] || [];
   const isLeaf = children.length === 0;
@@ -64,7 +64,7 @@ function LocationRowRecursive({
         }}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          {location.color && <span className="w-3 h-3 rounded-full" style={{ backgroundColor: location.color }} />}
+          {showColors && location.color && <span className="w-3 h-3 rounded-full" style={{ backgroundColor: location.color }} />}
           <span className={depth === 0 ? "font-semibold" : "font-medium"} style={{ color: "var(--text-primary)" }}>
             {depth > 0 && "↳ "}{location.name}
           </span>
@@ -98,7 +98,7 @@ function LocationRowRecursive({
                   }}
                 />
                 <Button size="sm" onClick={() => handleSaveCapacity(location.id)}>
-                  ✓
+                  {showSymbols ? "✓" : "OK"}
                 </Button>
                 <Button
                   variant="ghost"
@@ -108,7 +108,7 @@ function LocationRowRecursive({
                     setCapacityValue("");
                   }}
                 >
-                  ✕
+                  {showSymbols ? "✕" : "X"}
                 </Button>
               </>
             ) : (
@@ -125,7 +125,7 @@ function LocationRowRecursive({
                 }}
                 title="Kapazität bearbeiten"
               >
-                📦 {location.capacity ?? "∞"}
+                {showSymbols && "📦 "}{location.capacity ?? "∞"}
               </button>
             )
           ) : (
@@ -140,14 +140,14 @@ function LocationRowRecursive({
               }}
               title="Summe der Unterbereiche"
             >
-              📦 {capacity ?? "∞"}
+              {showSymbols && "📦 "}{capacity ?? "∞"}
             </button>
           )}
           <Button variant="danger" size="sm" onClick={() => handleDeleteLocation(location.id)}>
-            ✕
+            {showSymbols ? "✕" : "X"}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => handleOpenLocationModal(location)}>
-            ✎
+            {showSymbols ? "✎" : "E"}
           </Button>
         </div>
       </div>
@@ -168,6 +168,8 @@ function LocationRowRecursive({
           handleSaveCapacity={handleSaveCapacity}
           handleDeleteLocation={handleDeleteLocation}
           handleOpenLocationModal={handleOpenLocationModal}
+          showSymbols={showSymbols}
+          showColors={showColors}
         />
       ))}
     </div>
@@ -175,10 +177,15 @@ function LocationRowRecursive({
 }
 
 export default function SettingsPage() {
+  const { theme } = useTheme();
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("products");
+
+  const isClassic = theme === "classic";
+  const showSymbols = !isClassic;
+  const showColors = !isClassic;
 
   const [locations, setLocations] = useState<StorageLocation[]>([]);
   const [products, setProducts] = useState<ProductVariant[]>([]);
@@ -189,7 +196,7 @@ export default function SettingsPage() {
   const [isAddingLocation, setIsAddingLocation] = useState(false);
 
   // New product form
-  const [newProduct, setNewProduct] = useState({ name: "", code: "", color: "", category: "finished" as ProductCategory });
+  const [newProduct, setNewProduct] = useState({ name: "", code: "", color: "", category: "finished" });
   const [isAddingProduct, setIsAddingProduct] = useState(false);
 
   // Capacity editing
@@ -629,7 +636,7 @@ export default function SettingsPage() {
             color: activeTab === "products" ? "white" : "var(--text-muted)",
           }}
         >
-          🏷️ Produktvarianten ({products.length})
+          {showSymbols && "🏷️ "}Produktvarianten ({products.length})
         </button>
         <button
           onClick={() => setActiveTab("locations")}
@@ -639,7 +646,7 @@ export default function SettingsPage() {
             color: activeTab === "locations" ? "white" : "var(--text-muted)",
           }}
         >
-          📍 Zonen ({locations.length})
+          {showSymbols && "📍 "}Zonen ({locations.length})
         </button>
         <button
           onClick={() => setActiveTab("floorplan")}
@@ -649,7 +656,7 @@ export default function SettingsPage() {
             color: activeTab === "floorplan" ? "white" : "var(--text-muted)",
           }}
         >
-          🗺️ Grundriss bearbeiten
+          {showSymbols && "🗺️ "}Grundriss bearbeiten
         </button>
       </div>
 
@@ -683,12 +690,12 @@ export default function SettingsPage() {
               <div className="w-36">
                 <select
                   value={newProduct.category}
-                  onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value as ProductCategory }))}
+                  onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}
                   className="w-full h-10 px-3 rounded-lg text-sm"
                   style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
                 >
-                  {(Object.keys(CATEGORY_LABELS) as ProductCategory[]).map((cat) => (
-                    <option key={cat} value={cat}>{CATEGORY_LABELS[cat].icon} {CATEGORY_LABELS[cat].label}</option>
+                  {getOrderedCategories().map((cat) => (
+                    <option key={cat.key} value={cat.key}>{cat.icon} {cat.label}</option>
                   ))}
                 </select>
               </div>
@@ -714,23 +721,23 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div>
-                {(["raw", "finished", "packaging"] as ProductCategory[]).map((category) => {
-                  const categoryProducts = products.filter((p) => p.category === category);
+                {getOrderedCategories().map((categoryInfo) => {
+                  const categoryProducts = products.filter((p) => p.category === categoryInfo.key);
                   if (categoryProducts.length === 0) return null;
                   
                   return (
-                    <div key={category}>
+                    <div key={categoryInfo.key}>
                       <div
                         className="px-4 py-2 text-sm font-medium sticky top-0"
                         style={{ backgroundColor: "var(--bg-secondary)", color: "var(--text-muted)", borderBottom: "1px solid var(--border-light)" }}
                       >
-                        {CATEGORY_LABELS[category].icon} {CATEGORY_LABELS[category].label} ({categoryProducts.length})
+                        {showSymbols && categoryInfo.icon + " "}{categoryInfo.label} ({categoryProducts.length})
                       </div>
                       <div className="divide-y" style={{ borderColor: "var(--border-light)" }}>
                         {categoryProducts.map((product) => (
                           <div key={product.id} className="p-3 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              {product.color && (
+                              {showColors && product.color && (
                                 <span className="w-4 h-4 rounded-full" style={{ backgroundColor: product.color }} />
                               )}
                               <span className="font-medium" style={{ color: "var(--text-primary)" }}>{product.name}</span>
@@ -742,9 +749,9 @@ export default function SettingsPage() {
                             </div>
                             <div className="flex gap-2">
                               <Button size="sm" variant="ghost" onClick={() => handleOpenProductModal(product)}>
-                                ✎
+                                {showSymbols ? "✎" : "E"}
                               </Button>
-                              <Button variant="danger" size="sm" onClick={() => handleDeleteProduct(product.id)}>✕</Button>
+                              <Button variant="danger" size="sm" onClick={() => handleDeleteProduct(product.id)}>{showSymbols ? "✕" : "X"}</Button>
                             </div>
                           </div>
                         ))}
@@ -844,6 +851,8 @@ export default function SettingsPage() {
                     handleSaveCapacity={handleSaveCapacity}
                     handleDeleteLocation={handleDeleteLocation}
                     handleOpenLocationModal={handleOpenLocationModal}
+                    showSymbols={showSymbols}
+                    showColors={showColors}
                   />
                 ))}
               </div>
@@ -880,9 +889,9 @@ export default function SettingsPage() {
               name: "category",
               label: "Kategorie",
               type: "select",
-              options: Object.entries(CATEGORY_LABELS).map(([key, val]) => ({
-                value: key,
-                label: `${val.icon} ${val.label}`,
+              options: getOrderedCategories().map((cat) => ({
+                value: cat.key,
+                label: `${cat.icon} ${cat.label}`,
               })),
             },
             { name: "color", label: "Farbe", type: "color" },
