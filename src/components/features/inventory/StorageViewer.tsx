@@ -45,7 +45,6 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
   const [allLocations, setAllLocations] = useState<StorageLocation[]>([]);
   const [products, setProducts] = useState<ProductVariant[]>([]);
   const [inventory, setInventory] = useState<CurrentInventory[]>([]);
-  const [currentParent, setCurrentParent] = useState<StorageLocation | null>(null);
   const [navigationStack, setNavigationStack] = useState<StorageLocation[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<StorageLocation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +76,11 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Derive currentParent from navigationStack
+  const currentParent = useMemo(() => {
+    return navigationStack[navigationStack.length - 1] || null;
+  }, [navigationStack]);
 
   // Filter locations based on current parent
   const displayedLocations = useMemo(() => {
@@ -241,7 +245,6 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
 
   const handleDrillIn = (location: StorageLocation) => {
     setNavigationStack((prev) => [...prev, location]);
-    setCurrentParent(location);
     setSelectedLocation(null);
   };
 
@@ -249,8 +252,6 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
     setNavigationStack((prev) => {
       const newStack = [...prev];
       newStack.pop();
-      const newParent = newStack[newStack.length - 1] || null;
-      setCurrentParent(newParent);
       return newStack;
     });
     setSelectedLocation(null);
@@ -289,7 +290,7 @@ export default function StorageViewer({ onClose }: StorageViewerProps) {
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          <span className="font-semibold">← Zurück zur Übersicht</span>
+          <span className="font-semibold">← Zurück</span>
           <span className="ml-auto text-sm px-2 py-1 rounded-lg" style={{ 
             backgroundColor: currentParent.color || "var(--accent)",
             color: "white" 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface QuickNumberInputProps {
   value: number;
@@ -19,6 +19,13 @@ export default function QuickNumberInput({
 }: QuickNumberInputProps) {
   const [showNumpad, setShowNumpad] = useState(false);
   const [inputValue, setInputValue] = useState(value.toString());
+
+  // Sync inputValue when external value changes
+  useEffect(() => {
+    if (!showNumpad) {
+      setInputValue(value === 0 ? "" : value.toString());
+    }
+  }, [value, showNumpad]);
 
   const handleNumpadOpen = () => {
     setInputValue(value === 0 ? "" : value.toString());
@@ -44,7 +51,8 @@ export default function QuickNumberInput({
     setShowNumpad(false);
   };
 
-  const handleCancel = () => {
+  const handleDiscard = () => {
+    setInputValue(value === 0 ? "" : value.toString());
     setShowNumpad(false);
   };
 
@@ -91,10 +99,9 @@ export default function QuickNumberInput({
       {/* Numpad Modal */}
       {showNumpad && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - does nothing, user must confirm or discard */}
           <div
             className="fixed inset-0 bg-black/60 z-[60] animate-fadeIn"
-            onClick={handleCancel}
           />
 
           {/* Numpad */}
@@ -178,14 +185,14 @@ export default function QuickNumberInput({
             {/* Action buttons */}
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={handleCancel}
+                onClick={handleDiscard}
                 className="h-14 rounded-xl text-lg font-bold transition-all active:scale-95"
                 style={{
                   backgroundColor: "var(--bg-tertiary)",
                   color: "var(--text-secondary)",
                 }}
               >
-                Abbrechen
+                Verwerfen
               </button>
               <button
                 onClick={handleConfirm}

@@ -20,7 +20,6 @@ export default function InventoryCapture() {
   const [currentParent, setCurrentParent] = useState<StorageLocation | null>(null);
   const [navigationStack, setNavigationStack] = useState<StorageLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -126,39 +125,32 @@ export default function InventoryCapture() {
     });
   };
 
-  const handleSaveInventory = async () => {
-    const allEntries: InventoryInput[] = [];
-    inventoryData.forEach((entries) => {
-      allEntries.push(...entries);
-    });
-
-    if (allEntries.length === 0) {
-      setError("Bitte erfassen Sie mindestens einen Lagerplatz.");
-      return;
-    }
+  // Save only the current location's entries
+  const handleSaveCurrentLocation = async () => {
+    if (!selectedLocation) return;
+    
+    const entries = inventoryData.get(selectedLocation.id) || [];
+    if (entries.length === 0) return;
 
     if (!user) {
       setError("Nicht angemeldet.");
       return;
     }
 
-    setIsSaving(true);
     setError("");
-    setSuccess("");
-
+    
     try {
       const response = await fetch("/api/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          entries: allEntries,
+          entries,
           userId: user.id,
         }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        // Handle invalid session - user must log out/in
         if (data.error === "USER_NOT_FOUND") {
           setError("⚠️ Sitzung ungültig. Bitte ausloggen und erneut einloggen.");
           return;
@@ -166,36 +158,20 @@ export default function InventoryCapture() {
         throw new Error(data.error || "Lagerstand konnte nicht gespeichert werden");
       }
 
-      const result = await response.json();
+      // Clear this location's entries from local state
+      setInventoryData((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(selectedLocation.id);
+        return newMap;
+      });
       
-      // Clear only the saved entries, keep the form usable
-      setInventoryData(new Map());
-      setSelectedLocation(null);
-      setSuccess(`✓ ${result.message}`);
-      setTimeout(() => setSuccess(""), 4000);
+      setSuccess(`✓ ${selectedLocation.name} gespeichert`);
+      setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Lagerstand konnte nicht gespeichert werden");
-    } finally {
-      setIsSaving(false);
+      setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+      throw err; // Re-throw so MobileEntrySheet knows it failed
     }
   };
-
-  const handleClear = () => {
-    if (confirm("Alle erfassten Daten löschen?")) {
-      setInventoryData(new Map());
-      setSelectedLocation(null);
-      setCurrentParent(null);
-      setNavigationStack([]);
-    }
-  };
-
-  // Calculate totals - count all locations that have data
-  const totalPallets = Array.from(inventoryData.values())
-    .flat()
-    .reduce((sum, e) => sum + e.quantity, 0);
-  const locationsWithData = inventoryData.size;
-  const leafLocations = allLocations.filter((l) => (l.childCount || 0) === 0);
-  const hasData = locationsWithData > 0;
 
   if (isLoading) {
     return (
@@ -282,127 +258,6 @@ export default function InventoryCapture() {
         )}
       </div>
 
-      {/* Bottom action bar - always visible */}
-      <div
-        className="mt-4 rounded-2xl p-4"
-        style={{
-          backgroundColor: "var(--bg-primary)",
-          border: "1px solid var(--border-light)",
-          boxShadow: "0 -4px 20px rgba(0,0,0,0.1)",
-        }}
-      >
-        {/* Stats row */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ backgroundColor: "var(--bg-tertiary)" }}
-            >
-              <span className="text-2xl">📍</span>
-              <div>
-                <div className="text-xs" style={{ color: "var(--text-muted)" }}>Lagerplätze</div>
-                <div className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                  {locationsWithData}/{leafLocations.length}
-                </div>
-              </div>
-            </div>
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ backgroundColor: "var(--bg-tertiary)" }}
-            >
-              <span className="text-2xl">📦</span>
-              <div>
-                <div className="text-xs" style={{ color: "var(--text-muted)" }}>Paletten</div>
-                <div className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                  {totalPallets}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Clear button */}
-          {hasData && (
-            <button
-              onClick={handleClear}
-              className="p-3 rounded-xl transition-all active:scale-95"
-              style={{ backgroundColor: "var(--bg-tertiary)" }}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: "var(--text-muted)" }}>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          )}
-        </div>
-
-        {/* Save button */}
-        <button
-          onClick={handleSaveInventory}
-          disabled={isSaving || !hasData}
-          className="w-full h-14 rounded-xl font-bold text-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            backgroundColor: hasData ? "var(--accent)" : "var(--bg-tertiary)",
-            color: hasData ? "white" : "var(--text-muted)",
-          }}
-        >
-          {isSaving ? (
-            <span className="flex items-center justify-center gap-2">
-              <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              Speichern...
-            </span>
-          ) : (
-            `💾 Lagerstand speichern${hasData ? ` (${totalPallets} Paletten)` : ""}`
-          )}
-        </button>
-
-        {/* Summary of what will be saved */}
-        {hasData && (
-          <div 
-            className="mt-4 rounded-xl p-3 max-h-48 overflow-y-auto"
-            style={{ backgroundColor: "var(--bg-tertiary)" }}
-          >
-            <div className="text-xs font-semibold mb-2" style={{ color: "var(--text-muted)" }}>
-              📋 Erfasste Positionen:
-            </div>
-            <div className="space-y-2">
-              {Array.from(inventoryData.entries()).map(([locationId, entries]) => {
-                const location = allLocations.find((l) => l.id === locationId);
-                if (!location || entries.length === 0) return null;
-                
-                return (
-                  <div 
-                    key={locationId}
-                    className="rounded-lg p-2"
-                    style={{ backgroundColor: "var(--bg-secondary)" }}
-                  >
-                    <div className="font-semibold text-sm mb-1" style={{ color: "var(--text-primary)" }}>
-                      📍 {location.name}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {entries.map((entry) => {
-                        const product = products.find((p) => p.id === entry.productId);
-                        if (!product) return null;
-                        return (
-                          <span
-                            key={entry.productId}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{ 
-                              backgroundColor: product.color || "var(--accent)",
-                              color: "white",
-                            }}
-                          >
-                            {product.name}: {entry.quantity}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Mobile Entry Sheet */}
       {selectedLocation && (
         <MobileEntrySheet
@@ -411,6 +266,7 @@ export default function InventoryCapture() {
           entries={inventoryData.get(selectedLocation.id) || []}
           onUpdate={handleUpdateEntries}
           onClose={() => setSelectedLocation(null)}
+          onSave={handleSaveCurrentLocation}
           onNext={goToNextLocation}
           onPrev={goToPrevLocation}
           hasNext={
