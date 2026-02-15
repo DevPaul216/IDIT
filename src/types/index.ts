@@ -34,8 +34,8 @@ export interface StorageLocation {
 }
 
 // Product variant / type of goods
-// Categories: "raw" (Rohmaterial), "finished" (Fertigprodukte), "packaging" (Verpackung)
-export type ProductCategory = "raw" | "finished" | "packaging";
+// Categories: "raw" (Rohmaterial), "finished" (Fertigprodukte), "packaging" (Verpackung), "intermediate" (Zwischenprodukte), "other" (Sonstiges)
+export type ProductCategory = "raw" | "finished" | "packaging" | "intermediate" | "other";
 
 export interface ProductVariant {
   id: string;

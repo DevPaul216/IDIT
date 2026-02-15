@@ -15,6 +15,10 @@
   --accent-primary: #f97316;
   --accent-secondary: #ea580c;
   --accent-gradient: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
 .dark {
@@ -31,6 +35,126 @@
   --accent: #fb923c;
   --accent-primary: #fb923c;
   --accent-secondary: #f97316;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+}
+
+/* Classic theme - MS Access / Windows 95 style */
+.classic {
+  --bg-primary: #d4d0c8;
+  --bg-secondary: #ece9d8;
+  --bg-tertiary: #c0c0c0;
+  --text-primary: #000000;
+  --text-secondary: #222222;
+  --text-muted: #555555;
+  --text-placeholder: #808080;
+  --border-color: #808080;
+  --border-light: #a0a0a0;
+  --input-bg: #ffffff;
+  --accent: #000080;
+  --accent-primary: #000080;
+  --accent-secondary: #000066;
+  --accent-gradient: none;
+  --radius: 2px;
+  --radius-sm: 2px;
+  --shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #ffffff;
+  --shadow-lg: inset -1px -1px 0 #808080, inset 1px 1px 0 #ffffff;
+}
+
+.classic button {
+  border-radius: 2px !important;
+}
+
+.classic input,
+.classic textarea,
+.classic select {
+  border-radius: 0 !important;
+  border: 1px solid #7f9db9 !important;
+  box-shadow: inset 1px 1px 0 #808080 !important;
+}
+
+.classic input:focus,
+.classic textarea:focus,
+.classic select:focus {
+  border-color: #000080 !important;
+  box-shadow: inset 1px 1px 0 #808080 !important;
+}
+
+/* Theme-aware button styles */
+.btn-primary {
+  background: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #b91c1c 100%);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #ec4899 100%);
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #db2777 100%);
+}
+
+.classic .btn-primary {
+  background: #000080;
+  border: 2px outset #c0c0c0;
+}
+
+.classic .btn-primary:hover {
+  background: #0000a0;
+}
+
+.classic .btn-primary:active {
+  border-style: inset;
+}
+
+.classic .btn-danger {
+  background: #800000;
+  border: 2px outset #c0c0c0;
+}
+
+.classic .btn-danger:hover {
+  background: #a00000;
+}
+
+.classic .btn-danger:active {
+  border-style: inset;
+}
+
+/* Sidebar logo styling */
+.sidebar-logo {
+  background: linear-gradient(135deg, #f97316 0%, #dc2626 100%);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.classic .sidebar-logo {
+  background: #000080;
+  box-shadow: none;
+  border: 2px outset #c0c0c0;
+}
+
+.nav-link:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.classic .nav-link-active {
+  border: 1px solid var(--border-color);
+}
+
+/* User avatar styling */
+.user-avatar {
+  background: linear-gradient(135deg, #fb923c 0%, #ef4444 100%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+}
+
+.classic .user-avatar {
+  background: #000080;
+  box-shadow: none;
+  border: 1px solid #808080;
 }
 
 * {

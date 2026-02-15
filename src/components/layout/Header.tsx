@@ -30,7 +30,10 @@ export default function Header() {
         {user && (
           <>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center shadow-sm">
+              <div 
+                className="w-8 h-8 flex items-center justify-center user-avatar"
+                style={{ borderRadius: 'var(--radius-sm)' }}
+              >
                 <span className="text-white font-medium text-sm">
                   {user.name[0].toUpperCase()}
                 </span>

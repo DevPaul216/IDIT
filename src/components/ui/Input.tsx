@@ -23,7 +23,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={id}
           className={cn(
-            "w-full px-3 py-2 rounded-lg shadow-sm transition-colors",
+            "w-full px-3 py-2 shadow-sm transition-colors",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             className
           )}
@@ -33,6 +33,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             borderStyle: 'solid',
             borderColor: error ? '#ef4444' : 'var(--border-color)',
             color: 'var(--text-primary)',
+            borderRadius: 'var(--radius-sm)',
           }}
           {...props}
         />

@@ -45,8 +45,10 @@ function getFreshnessInfo(lastChecked: string | null): { label: string; color: s
 
 const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
   raw: { label: "Rohmaterial", icon: "🧵" },
+  intermediate: { label: "Zwischenprodukte", icon: "⚙️" },
   finished: { label: "Fertigprodukte", icon: "📦" },
   packaging: { label: "Verpackung", icon: "🏷️" },
+  other: { label: "Sonstiges", icon: "📋" },
 };
 
 export default function DashboardPage() {

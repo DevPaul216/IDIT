@@ -102,12 +102,16 @@ export default function Sidebar() {
       <div className={cn("p-4 flex items-center", isCollapsed ? "justify-center" : "justify-between")}>
         {!isCollapsed && (
           <Link href="/dashboard" className="flex items-center gap-3 group flex-1 min-w-0">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
-              <span className="text-xl">🔥</span>
+            <div 
+              className="w-10 h-10 sidebar-logo flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0"
+              style={{ borderRadius: 'var(--radius-sm)' }}
+            >
+              <span className="text-xl">📦</span>
             </div>
             <div className="min-w-0">
               <span 
-                className="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent block truncate"
+                className="text-xl font-bold sidebar-logo-text block truncate"
+                style={{ color: 'var(--accent-primary)' }}
               >IDIT</span>
               <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>Lagerverwaltung</p>
             </div>
@@ -116,17 +120,23 @@ export default function Sidebar() {
 
         {isCollapsed && (
           <Link href="/dashboard" className="flex items-center justify-center">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg hover:scale-105 transition-transform">
-              <span className="text-xl">🔥</span>
+            <div 
+              className="w-10 h-10 sidebar-logo flex items-center justify-center hover:scale-105 transition-transform"
+              style={{ borderRadius: 'var(--radius-sm)' }}
+            >
+              <span className="text-xl">📦</span>
             </div>
           </Link>
         )}
 
         <button
           onClick={toggleCollapse}
-          className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+          className="p-1.5 transition-colors flex-shrink-0"
           title={isCollapsed ? "Sidebar erweitern" : "Sidebar einklappen"}
-          style={{ color: 'var(--text-muted)' }}
+          style={{ 
+            color: 'var(--text-muted)',
+            borderRadius: 'var(--radius-sm)'
+          }}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {isCollapsed ? (
@@ -148,13 +158,15 @@ export default function Sidebar() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all nav-link",
                     isCollapsed && "justify-center px-2",
-                    isActive
-                      ? "bg-gradient-to-r from-orange-500/10 to-red-500/10 text-orange-600 shadow-sm"
-                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    isActive && "nav-link-active"
                   )}
-                  style={!isActive ? { color: 'var(--text-muted)' } : undefined}
+                  style={{ 
+                    borderRadius: 'var(--radius-sm)',
+                    color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
+                    backgroundColor: isActive ? 'var(--bg-tertiary)' : 'transparent'
+                  }}
                   title={isCollapsed ? item.label : undefined}
                 >
                   <span className="flex-shrink-0">

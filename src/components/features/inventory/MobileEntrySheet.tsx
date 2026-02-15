@@ -119,8 +119,10 @@ function TableNumpad({
 // Category labels for display (no "all" option)
 const CATEGORY_TABS: { key: ProductCategory; label: string; icon: string }[] = [
   { key: "raw", label: "Rohmaterial", icon: "🧵" },
+  { key: "intermediate", label: "Zwischenprodukte", icon: "⚙️" },
   { key: "finished", label: "Fertigprodukte", icon: "📦" },
   { key: "packaging", label: "Verpackung", icon: "🏷️" },
+  { key: "other", label: "Sonstiges", icon: "📋" },
 ];
 
 interface MobileEntrySheetProps {
