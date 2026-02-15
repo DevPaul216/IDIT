@@ -185,7 +185,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // New location form
-  const [newLocation, setNewLocation] = useState({ name: "", parentId: "", color: "#3b82f6", x: 0, y: 0, width: 1, height: 1 });
+  const [newLocation, setNewLocation] = useState({ name: "", parentId: "", color: "#3b82f6", x: 100, y: 100, width: 100, height: 100 });
   const [isAddingLocation, setIsAddingLocation] = useState(false);
 
   // New product form
@@ -300,6 +300,35 @@ export default function SettingsPage() {
     return result.hasCapacity ? result.sum : null;
   };
 
+  // Calculate good default position for new zones (grid layout)
+  const getDefaultPosition = () => {
+    if (locations.length === 0) {
+      return { x: 100, y: 100 };
+    }
+    
+    // Find max x and y to position new zone in a grid
+    let maxX = 100;
+    let maxY = 100;
+    
+    locations.forEach((loc) => {
+      const locRight = (loc.x || 0) + (loc.width || 100);
+      const locBottom = (loc.y || 0) + (loc.height || 100);
+      
+      if (locRight > maxX) maxX = locRight;
+      if (locBottom > maxY) maxY = locBottom;
+    });
+    
+    // Place new zone with 20px padding from existing zones
+    // If row is getting crowded, start a new row
+    const nextX = maxX + 20;
+    const nextY = nextX > 1000 ? maxY + 20 : 100;
+    
+    return {
+      x: nextX > 1000 ? 100 : nextX,
+      y: nextY,
+    };
+  };
+
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordInput === ADMIN_PASSWORD) {
@@ -342,7 +371,9 @@ export default function SettingsPage() {
       if (response.ok) {
         const location = await response.json();
         setLocations((prev) => [...prev, location]);
-        setNewLocation({ name: "", parentId: "", color: "#3b82f6", x: 0, y: 0, width: 1, height: 1 });
+        // Reset form with new default position
+        const newPos = getDefaultPosition();
+        setNewLocation({ name: "", parentId: "", color: "#3b82f6", x: newPos.x, y: newPos.y, width: 100, height: 100 });
       } else {
         const error = await response.json();
         alert(`Fehler: ${error.error || "Konnte Lagerplatz nicht hinzufügen"}`);
