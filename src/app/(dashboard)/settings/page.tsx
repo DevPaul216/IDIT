@@ -185,7 +185,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // New location form
-  const [newLocation, setNewLocation] = useState({ name: "", parentId: "", x: 0, y: 0 });
+  const [newLocation, setNewLocation] = useState({ name: "", parentId: "", color: "#3b82f6", x: 0, y: 0, width: 1, height: 1 });
   const [isAddingLocation, setIsAddingLocation] = useState(false);
 
   // New product form
@@ -320,6 +320,10 @@ export default function SettingsPage() {
       alert("Bitte geben Sie einen Namen ein.");
       return;
     }
+    if (!newLocation.color) {
+      alert("Bitte wählen Sie eine Farbe aus.");
+      return;
+    }
     setIsAddingLocation(true);
     try {
       const response = await fetch("/api/locations", {
@@ -328,12 +332,17 @@ export default function SettingsPage() {
         body: JSON.stringify({
           name,
           parentId: newLocation.parentId || null,
+          color: newLocation.color,
+          x: newLocation.x,
+          y: newLocation.y,
+          width: newLocation.width,
+          height: newLocation.height,
         }),
       });
       if (response.ok) {
         const location = await response.json();
         setLocations((prev) => [...prev, location]);
-        setNewLocation({ name: "", parentId: "", x: 0, y: 0 });
+        setNewLocation({ name: "", parentId: "", color: "#3b82f6", x: 0, y: 0, width: 1, height: 1 });
       } else {
         const error = await response.json();
         alert(`Fehler: ${error.error || "Konnte Lagerplatz nicht hinzufügen"}`);
@@ -730,7 +739,7 @@ export default function SettingsPage() {
             className="p-4"
             style={{ borderBottom: "1px solid var(--border-light)", backgroundColor: "var(--bg-tertiary)" }}
           >
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 items-end">
               <div className="flex-1 min-w-[150px]">
                 <Input
                   value={newLocation.name}
@@ -764,6 +773,16 @@ export default function SettingsPage() {
                     );
                   })}
                 </select>
+              </div>
+              <div className="w-12">
+                <input
+                  type="color"
+                  value={newLocation.color}
+                  onChange={(e) => setNewLocation((p) => ({ ...p, color: e.target.value }))}
+                  className="w-full h-10 rounded-lg cursor-pointer"
+                  style={{ border: "1px solid var(--border-light)" }}
+                  title="Farbe auswählen"
+                />
               </div>
               <Button type="submit" disabled={isAddingLocation || !newLocation.name.trim()}>
                 {isAddingLocation ? "..." : "+ Hinzufügen"}
@@ -856,9 +875,26 @@ export default function SettingsPage() {
               type: "select",
               options: [
                 { value: "", label: "Hauptbereich" },
-                ...allNonLeafLocations
-                  .filter((l) => l.id !== editingEntity.data.id) // Prevent circular reference
+                ...locations
+                  .filter((l) => {
+                    // Can't be parent of itself
+                    if (l.id === editingEntity.data.id) return false;
+                    
+                    // Can't be parent if it's a descendant of the zone being edited
+                    // (would create a circular reference)
+                    let current: string | null = l.parentId;
+                    const visited = new Set<string>();
+                    while (current) {
+                      if (current === editingEntity.data.id) return false; // l is a descendant
+                      if (visited.has(current)) break;
+                      visited.add(current);
+                      const parent = locations.find((loc) => loc.id === current);
+                      current = parent?.parentId ?? null;
+                    }
+                    return true;
+                  })
                   .map((l) => {
+                    // Calculate depth for visual hierarchy
                     const depth = (() => {
                       let d = 0,
                         p = l.parentId;

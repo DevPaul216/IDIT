@@ -144,8 +144,8 @@ export default function EntityModal({
 
           {error && (
             <p className="text-sm rounded-lg p-3 border" style={{ 
-              backgroundColor: "rgba(239, 68, 68, 0.15)",
-              borderColor: "rgba(239, 68, 68, 0.3)",
+              backgroundColor: "rgba(127, 29, 29, 0.4)",
+              borderColor: "rgba(244, 63, 94, 0.5)",
               color: "#fca5a5"
             }}>
               {error}
