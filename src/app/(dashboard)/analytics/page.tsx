@@ -191,7 +191,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label="Gesamtbestand" value={data.summary.totalItems} icon="📦" showSymbols={showSymbols} />
         <StatCard label="Produkte" value={`${data.summary.uniqueProductsInStock}/${data.summary.totalProducts}`} icon="🏷️" showSymbols={showSymbols} />
-        <StatCard label="Lagerplätze" value={`${data.summary.uniqueLocationsWithStock}/${data.summary.totalLocations}`} icon="📍" showSymbols={showSymbols} />
+        <StatCard label="Zonen" value={`${data.summary.uniqueLocationsWithStock}/${data.summary.totalLocations}`} icon="📍" showSymbols={showSymbols} />
         <StatCard label="Änderungen" value={data.summary.changesThisWeek} icon="🔄" showSymbols={showSymbols} />
       </div>
 
@@ -345,13 +345,13 @@ export default function AnalyticsPage() {
         style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-light)" }}
       >
         <h3 className="font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-          {showSymbols && "📦 "}Lagerplatzauslastung
+          {showSymbols && "📦 "}Zonenauslastung
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border-light)" }}>
-                <th className="text-left py-2 px-3" style={{ color: "var(--text-muted)" }}>Lagerplatz</th>
+                <th className="text-left py-2 px-3" style={{ color: "var(--text-muted)" }}>Zone</th>
                 <th className="text-right py-2 px-3" style={{ color: "var(--text-muted)" }}>Bestand</th>
                 <th className="text-right py-2 px-3" style={{ color: "var(--text-muted)" }}>Kapazität</th>
                 <th className="text-right py-2 px-3" style={{ color: "var(--text-muted)" }}>Auslastung</th>

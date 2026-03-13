@@ -206,9 +206,9 @@ export default function InventoryCapture() {
           >
             <div className="text-6xl mb-4">📦</div>
             <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
-              Keine Lagerplätze konfiguriert
+              Keine Zonen konfiguriert
             </h3>
-            <p>Bitte zuerst Lagerplätze in der Lagerkonfiguration hinzufügen.</p>
+            <p>Bitte zuerst Zonen in der Lagerkonfiguration hinzufügen.</p>
           </div>
         ) : (
           <div

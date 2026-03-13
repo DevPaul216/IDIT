@@ -96,7 +96,7 @@ export async function DELETE(
     });
     if (children.length > 0) {
       return NextResponse.json(
-        { error: "Dieser Lagerplatz hat Unterbereiche. Bitte zuerst die Unterbereiche löschen." },
+        { error: "Diese Zone hat Unterbereiche. Bitte zuerst die Unterbereiche löschen." },
         { status: 400 }
       );
     }

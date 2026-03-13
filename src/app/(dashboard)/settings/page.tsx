@@ -383,11 +383,11 @@ export default function SettingsPage() {
         setNewLocation({ name: "", parentId: "", color: "#3b82f6", x: newPos.x, y: newPos.y, width: 100, height: 100 });
       } else {
         const error = await response.json();
-        alert(`Fehler: ${error.error || "Konnte Lagerplatz nicht hinzufügen"}`);
+        alert(`Fehler: ${error.error || "Konnte Zone nicht hinzufügen"}`);
       }
     } catch (err) {
       console.error("Failed to add location:", err);
-      alert("Fehler beim Hinzufügen des Lagerplatzes");
+      alert("Fehler beim Hinzufügen der Zone");
     } finally {
       setIsAddingLocation(false);
     }
@@ -397,7 +397,7 @@ export default function SettingsPage() {
     const loc = locations.find((l) => l.id === id);
     const hasChildren = childrenByParent[id]?.length > 0;
     if (hasChildren) {
-      alert("Dieser Lagerplatz hat Unterbereiche. Bitte zuerst die Unterbereiche löschen.");
+      alert("Diese Zone hat Unterbereiche. Bitte zuerst die Unterbereiche löschen.");
       return;
     }
     setConfirmDialog({
@@ -616,7 +616,7 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <PageWrapper title="Lagerkonfiguration" description="Lagerplätze und Produkte konfigurieren">
+      <PageWrapper title="Lagerkonfiguration" description="Zonen und Produkte konfigurieren">
         <div className="animate-pulse space-y-4">
           <div className="h-48 rounded-lg" style={{ backgroundColor: "var(--bg-tertiary)" }} />
         </div>
@@ -625,7 +625,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <PageWrapper title="Lagerkonfiguration" description="Lagerplätze und Produktvarianten konfigurieren">
+    <PageWrapper title="Lagerkonfiguration" description="Zonen und Produktvarianten konfigurieren">
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button

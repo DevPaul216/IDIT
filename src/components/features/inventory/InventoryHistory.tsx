@@ -250,7 +250,7 @@ export default function InventoryHistory() {
                 {new Set(logs.map((l) => l.locationId)).size}
               </div>
               <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                Lagerplätze
+                Zonen
               </div>
             </div>
             <div>

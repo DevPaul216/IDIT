@@ -199,7 +199,7 @@ export default function DashboardPage() {
           style={{ backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-light)" }}
         >
           <h3 className="font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
-            {showSymbols && "📍 "}Lagerplätze
+            {showSymbols && "📍 "}Zonen
           </h3>
           
           {isLoading ? (
@@ -211,7 +211,7 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ borderBottom: "2px solid var(--border-light)" }}>
-                    <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--text-muted)" }}>Lagerplatz</th>
+                    <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--text-muted)" }}>Zone</th>
                     <th className="px-3 py-2 text-center font-medium" style={{ color: "var(--text-muted)" }}>Paletten</th>
                     <th className="px-3 py-2 text-center font-medium" style={{ color: "var(--text-muted)" }}>Status</th>
                   </tr>
@@ -244,7 +244,7 @@ export default function DashboardPage() {
           ) : (
             <div className="text-center py-6">
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Keine Lagerplätze erfasst
+                Keine Zonen erfasst
               </p>
             </div>
           )}

@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       // Check for unique constraint violation
       if (error instanceof Error && error.message.includes("Unique constraint failed")) {
         return NextResponse.json(
-          { error: "Ein Lagerplatz mit diesem Namen existiert bereits im gleichen Bereich" },
+          { error: "Eine Zone mit diesem Namen existiert bereits im gleichen Bereich" },
           { status: 400 }
         );
       }
