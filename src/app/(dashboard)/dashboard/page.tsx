@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useUser } from "@/context/UserContext";
 import { useTheme } from "@/components/ui/ThemeProvider";
 import PageWrapper from "@/components/layout/PageWrapper";
@@ -57,11 +57,7 @@ export default function DashboardPage() {
   const showSymbols = !isClassic;
   const showColors = !isClassic;
 
-  useEffect(() => {
-    fetchSummary();
-  }, []);
-
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       const response = await fetch("/api/inventory/summary");
       if (response.ok) {
@@ -72,7 +68,11 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
 
   // Group products by category
   const productsByCategory = summary?.byProduct.reduce((acc, item) => {

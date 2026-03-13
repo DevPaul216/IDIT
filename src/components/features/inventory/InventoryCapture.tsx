@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { StorageLocation, ProductVariant, InventoryInput } from "@/types";
 import { useUser } from "@/context/UserContext";
 import { useRefreshOnNav } from "@/hooks/useRefreshOnNav";
@@ -59,25 +59,16 @@ export default function InventoryCapture() {
     }
   }, []);
 
-  // Refetch when navigating to this page
+  // Refetch when navigating to this page (also fires on initial mount)
   useRefreshOnNav(fetchData);
 
-  // Initial load only (useEffect will be removed as useRefreshOnNav handles it)
-  useEffect(() => {
-    if (allLocations.length === 0) {
-      fetchData();
-    }
-  }, []);
-
-  // Navigation helpers for moving between locations in current view
-  const currentLocationIndex = useMemo(() => {
-    if (!selectedLocation) return -1;
-    return displayedLocations.findIndex((l) => l.id === selectedLocation.id);
-  }, [selectedLocation, displayedLocations]);
+  // Leaf locations in current view (no children) — used for prev/next navigation
+  const leafLocations = useMemo(
+    () => displayedLocations.filter((l) => (l.childCount || 0) === 0),
+    [displayedLocations]
+  );
 
   const goToNextLocation = () => {
-    // Get all leaf locations (no children) in current view
-    const leafLocations = displayedLocations.filter((l) => (l.childCount || 0) === 0);
     const currentLeafIndex = leafLocations.findIndex((l) => l.id === selectedLocation?.id);
     if (currentLeafIndex < leafLocations.length - 1) {
       setSelectedLocation(leafLocations[currentLeafIndex + 1]);
@@ -85,7 +76,6 @@ export default function InventoryCapture() {
   };
 
   const goToPrevLocation = () => {
-    const leafLocations = displayedLocations.filter((l) => (l.childCount || 0) === 0);
     const currentLeafIndex = leafLocations.findIndex((l) => l.id === selectedLocation?.id);
     if (currentLeafIndex > 0) {
       setSelectedLocation(leafLocations[currentLeafIndex - 1]);
@@ -270,13 +260,11 @@ export default function InventoryCapture() {
           onNext={goToNextLocation}
           onPrev={goToPrevLocation}
           hasNext={
-            displayedLocations.filter((l) => (l.childCount || 0) === 0)
-              .findIndex((l) => l.id === selectedLocation?.id) <
-            displayedLocations.filter((l) => (l.childCount || 0) === 0).length - 1
+            leafLocations.findIndex((l) => l.id === selectedLocation?.id) <
+            leafLocations.length - 1
           }
           hasPrev={
-            displayedLocations.filter((l) => (l.childCount || 0) === 0)
-              .findIndex((l) => l.id === selectedLocation?.id) > 0
+            leafLocations.findIndex((l) => l.id === selectedLocation?.id) > 0
           }
         />
       )}

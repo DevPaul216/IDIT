@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser, SimpleUser } from "@/context/UserContext";
 import HealthCheck from "./HealthCheck";
 
@@ -10,14 +10,7 @@ export default function PinLogin() {
   const [isChecking, setIsChecking] = useState(false);
   const { login } = useUser();
 
-  // Auto-check when PIN is 4 digits
-  useEffect(() => {
-    if (pin.length === 4) {
-      checkPin();
-    }
-  }, [pin]);
-
-  const checkPin = async () => {
+  const checkPin = useCallback(async () => {
     setIsChecking(true);
     setError("");
 
@@ -44,7 +37,14 @@ export default function PinLogin() {
     } finally {
       setIsChecking(false);
     }
-  };
+  }, [pin, login]);
+
+  // Auto-check when PIN is 4 digits
+  useEffect(() => {
+    if (pin.length === 4) {
+      checkPin();
+    }
+  }, [pin, checkPin]);
 
   const handleDigit = (digit: string) => {
     if (pin.length < 4 && !isChecking) {

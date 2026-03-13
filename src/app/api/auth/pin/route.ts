@@ -13,12 +13,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user by PIN
-    const user = await prisma.user.findFirst({
-      where: {
-        pin: pin,
-      },
-    });
+    // Find active user by PIN (pin is unique, so findUnique is safe here)
+    const candidate = await prisma.user.findUnique({ where: { pin } });
+    const user = candidate?.isActive ? candidate : null;
 
     if (!user) {
       return NextResponse.json(

@@ -17,7 +17,7 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   name      String
-  pin       String   // 4-digit PIN for quick login
+  pin       String   @unique  // 4-digit PIN for quick login
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -38,7 +38,7 @@ model StorageLocation {
   description String?
   // Parent location for hierarchical structure
   parentId    String?
-  parent      StorageLocation?  @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  parent      StorageLocation?  @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
   children    StorageLocation[] @relation("LocationHierarchy")
 
   @@unique([name, parentId])  // Name unique only per parent
@@ -90,6 +90,7 @@ model CurrentInventory {
   lastCheckedBy   User            @relation(fields: [lastCheckedById], references: [id])
 
   @@unique([locationId, productId])
+  @@index([productId])  // locationId already covered as leading column of the unique index
 }
 
 // Audit log for all inventory changes - used for analytics and history
@@ -105,4 +106,8 @@ model InventoryLog {
   location        StorageLocation @relation(fields: [locationId], references: [id])
   product         ProductVariant  @relation(fields: [productId], references: [id])
   changedBy       User            @relation(fields: [changedById], references: [id])
+
+  @@index([changedAt])   // analytics: WHERE changedAt >= oneMonthAgo
+  @@index([locationId])  // history: filter by location
+  @@index([productId])   // analytics/history: filter by product
 }

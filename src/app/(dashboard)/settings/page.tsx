@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTheme } from "@/components/ui/ThemeProvider";
 import PageWrapper from "@/components/layout/PageWrapper";
 import { StorageLocation, ProductVariant } from "@/types";
@@ -229,13 +229,7 @@ export default function SettingsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (isUnlocked) {
-      fetchData();
-    }
-  }, [isUnlocked]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [locRes, prodRes] = await Promise.all([
         fetch("/api/locations"),
@@ -250,7 +244,13 @@ export default function SettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isUnlocked) {
+      fetchData();
+    }
+  }, [isUnlocked, fetchData]);
 
   const { parentLocations, childrenByParent, allNonLeafLocations } = useMemo(() => {
     const parents = locations.filter((l) => !l.parentId);

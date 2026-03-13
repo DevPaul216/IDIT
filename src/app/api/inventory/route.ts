@@ -88,6 +88,12 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+      if (typeof entry.quantity !== "number" || !Number.isInteger(entry.quantity) || entry.quantity < 0) {
+        return NextResponse.json(
+          { error: "Quantity must be a non-negative integer" },
+          { status: 400 }
+        );
+      }
     }
 
     // Process each entry: upsert current inventory + create log

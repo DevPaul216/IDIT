@@ -21,7 +21,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Tech Stack
 
 - **Next.js** 16 with App Router
-- **Prisma** 5 with SQLite database
+- **Prisma** 5 with PostgreSQL (Neon serverless)
 - **Tailwind CSS** v4 (CSS variables for theming)
 - **TypeScript** 5
 - **PIN-based Authentication** (custom implementation)

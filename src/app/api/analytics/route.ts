@@ -8,76 +8,78 @@ export async function GET(request: NextRequest) {
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Get all current inventory with relations
-    const currentInventory = await prisma.currentInventory.findMany({
-      include: {
-        location: true,
-        product: true,
-      },
-    });
+    // Run all independent queries in parallel.
+    // inventorySnapshot uses minimal select (3 columns, no joins) instead of
+    // loading full relations for every row — significantly less data over the wire.
+    const [inventorySnapshot, freshness, locations, products, recentLogs] =
+      await Promise.all([
+        prisma.currentInventory.findMany({
+          select: { locationId: true, productId: true, quantity: true },
+        }),
+        prisma.currentInventory.aggregate({
+          _min: { lastCheckedAt: true },
+          _max: { lastCheckedAt: true },
+        }),
+        prisma.storageLocation.findMany({
+          include: {
+            parent: { select: { id: true, name: true } },
+            children: { select: { id: true } },
+          },
+        }),
+        prisma.productVariant.findMany(),
+        prisma.inventoryLog.findMany({
+          where: { changedAt: { gte: oneMonthAgo } },
+          include: { location: true, product: true, changedBy: true },
+          orderBy: { changedAt: "asc" },
+        }),
+      ]);
 
-    // Get all locations with capacity info
-    const locations = await prisma.storageLocation.findMany({
-      include: {
-        parent: true,
-        children: true,
-      },
-    });
-
-    // Get all products
-    const products = await prisma.productVariant.findMany();
-
-    // Get inventory logs for trend analysis
-    const recentLogs = await prisma.inventoryLog.findMany({
-      where: {
-        changedAt: { gte: oneMonthAgo },
-      },
-      include: {
-        location: true,
-        product: true,
-        changedBy: true,
-      },
-      orderBy: { changedAt: "asc" },
-    });
-
-    // Calculate metrics
-    const totalItems = currentInventory.reduce((sum, inv) => sum + inv.quantity, 0);
-    const uniqueLocationsWithStock = new Set(currentInventory.filter(i => i.quantity > 0).map(i => i.locationId)).size;
-    const uniqueProductsInStock = new Set(currentInventory.filter(i => i.quantity > 0).map(i => i.productId)).size;
+    // Summary metrics
+    const totalItems = inventorySnapshot.reduce((sum, inv) => sum + inv.quantity, 0);
+    const uniqueLocationsWithStock = new Set(
+      inventorySnapshot.filter((i) => i.quantity > 0).map((i) => i.locationId)
+    ).size;
+    const uniqueProductsInStock = new Set(
+      inventorySnapshot.filter((i) => i.quantity > 0).map((i) => i.productId)
+    ).size;
 
     // Product breakdown
-    const productTotals = products.map((product) => {
-      const inventoryForProduct = currentInventory.filter((inv) => inv.productId === product.id);
-      const total = inventoryForProduct.reduce((sum, inv) => sum + inv.quantity, 0);
-      const locationCount = inventoryForProduct.filter((inv) => inv.quantity > 0).length;
-      return {
-        id: product.id,
-        name: product.name,
-        code: product.code,
-        color: product.color,
-        totalQuantity: total,
-        locationCount,
-      };
-    }).sort((a, b) => b.totalQuantity - a.totalQuantity);
+    const productTotals = products
+      .map((product) => {
+        const entries = inventorySnapshot.filter((inv) => inv.productId === product.id);
+        const total = entries.reduce((sum, inv) => sum + inv.quantity, 0);
+        const locationCount = entries.filter((inv) => inv.quantity > 0).length;
+        return {
+          id: product.id,
+          name: product.name,
+          code: product.code,
+          color: product.color,
+          totalQuantity: total,
+          locationCount,
+        };
+      })
+      .sort((a, b) => b.totalQuantity - a.totalQuantity);
 
-    // Location utilization (for locations with capacity set)
+    // Location utilization (leaf locations only)
     const leafLocations = locations.filter((loc) => loc.children.length === 0);
-    const locationUtilization = leafLocations.map((location) => {
-      const inventoryAtLocation = currentInventory.filter((inv) => inv.locationId === location.id);
-      const totalQuantity = inventoryAtLocation.reduce((sum, inv) => sum + inv.quantity, 0);
-      const utilizationPercent = location.capacity 
-        ? Math.round((totalQuantity / location.capacity) * 100) 
-        : null;
-      
-      return {
-        id: location.id,
-        name: location.name,
-        parentName: location.parent?.name || null,
-        capacity: location.capacity,
-        currentStock: totalQuantity,
-        utilizationPercent,
-      };
-    }).sort((a, b) => (b.utilizationPercent ?? -1) - (a.utilizationPercent ?? -1));
+    const locationUtilization = leafLocations
+      .map((location) => {
+        const totalQuantity = inventorySnapshot
+          .filter((inv) => inv.locationId === location.id)
+          .reduce((sum, inv) => sum + inv.quantity, 0);
+        const utilizationPercent = location.capacity
+          ? Math.round((totalQuantity / location.capacity) * 100)
+          : null;
+        return {
+          id: location.id,
+          name: location.name,
+          parentName: location.parent?.name || null,
+          capacity: location.capacity,
+          currentStock: totalQuantity,
+          utilizationPercent,
+        };
+      })
+      .sort((a, b) => (b.utilizationPercent ?? -1) - (a.utilizationPercent ?? -1));
 
     // Activity by day (last 7 days)
     const activityByDay: Record<string, { date: string; changes: number; totalAdded: number; totalRemoved: number }> = {};
@@ -102,51 +104,38 @@ export async function GET(request: NextRequest) {
         }
       });
 
-    // Stock trend over time (aggregated by day for last 30 days)
-    // This is approximated from logs - we work backwards from current state
+    // Stock trend over time (last 30 days, approximated from logs)
     const stockHistory: { date: string; totalStock: number }[] = [];
     let runningTotal = totalItems;
-    
-    // Group logs by day in reverse order
+
     const logsByDay = new Map<string, typeof recentLogs>();
     recentLogs.forEach((log) => {
       const dateKey = log.changedAt.toISOString().split("T")[0];
-      if (!logsByDay.has(dateKey)) {
-        logsByDay.set(dateKey, []);
-      }
+      if (!logsByDay.has(dateKey)) logsByDay.set(dateKey, []);
       logsByDay.get(dateKey)!.push(log);
     });
 
-    // Build history going backwards
     for (let i = 0; i <= 30; i++) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dateKey = date.toISOString().split("T")[0];
-      
       stockHistory.unshift({ date: dateKey, totalStock: runningTotal });
-      
-      // Subtract the changes made on this day to get previous day's total
       const logsForDay = logsByDay.get(dateKey) || [];
       logsForDay.forEach((log) => {
-        const diff = log.newQty - (log.previousQty ?? 0);
-        runningTotal -= diff;
+        runningTotal -= log.newQty - (log.previousQty ?? 0);
       });
     }
 
-    // Top movers (products with most activity)
+    // Top movers (products with most activity in last 30 days)
     const productActivity = new Map<string, { added: number; removed: number; changes: number }>();
     recentLogs.forEach((log) => {
-      const key = log.productId;
-      if (!productActivity.has(key)) {
-        productActivity.set(key, { added: 0, removed: 0, changes: 0 });
+      if (!productActivity.has(log.productId)) {
+        productActivity.set(log.productId, { added: 0, removed: 0, changes: 0 });
       }
-      const activity = productActivity.get(key)!;
+      const activity = productActivity.get(log.productId)!;
       activity.changes++;
       const diff = log.newQty - (log.previousQty ?? 0);
-      if (diff > 0) {
-        activity.added += diff;
-      } else {
-        activity.removed += Math.abs(diff);
-      }
+      if (diff > 0) activity.added += diff;
+      else activity.removed += Math.abs(diff);
     });
 
     const topMovers = products
@@ -165,55 +154,42 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.totalMovement - a.totalMovement)
       .slice(0, 5);
 
-    // Staff activity (who checked what and when)
+    // Staff activity
     const staffActivity = new Map<string, { userId: string; userName: string; changes: number; lastActivity: Date }>();
     recentLogs.forEach((log) => {
-      const key = log.changedById;
-      if (!staffActivity.has(key)) {
-        staffActivity.set(key, { userId: key, userName: log.changedBy?.name || "Unbekannt", changes: 0, lastActivity: log.changedAt });
+      if (!staffActivity.has(log.changedById)) {
+        staffActivity.set(log.changedById, {
+          userId: log.changedById,
+          userName: log.changedBy?.name || "Unbekannt",
+          changes: 0,
+          lastActivity: log.changedAt,
+        });
       }
-      const activity = staffActivity.get(key)!;
+      const activity = staffActivity.get(log.changedById)!;
       activity.changes++;
-      if (log.changedAt > activity.lastActivity) {
-        activity.lastActivity = log.changedAt;
-      }
+      if (log.changedAt > activity.lastActivity) activity.lastActivity = log.changedAt;
     });
 
-    const staffActivityList = Array.from(staffActivity.values())
-      .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
+    const staffActivityList = Array.from(staffActivity.values()).sort(
+      (a, b) => b.lastActivity.getTime() - a.lastActivity.getTime()
+    );
 
-    // Category breakdown
+    // Category breakdown — uses product.category directly (not via inventory lookup)
     const categoryBreakdown = new Map<string, { category: string; quantity: number; productCount: number }>();
-    productTotals.forEach((product) => {
-      const inv = currentInventory.find(i => i.productId === product.id);
-      const cat = inv?.product?.category || "other";
+    products.forEach((product) => {
+      const cat = product.category || "other";
       if (!categoryBreakdown.has(cat)) {
         categoryBreakdown.set(cat, { category: cat, quantity: 0, productCount: 0 });
       }
       const entry = categoryBreakdown.get(cat)!;
-      entry.quantity += product.totalQuantity;
+      const total = productTotals.find((pt) => pt.id === product.id);
+      entry.quantity += total?.totalQuantity ?? 0;
       entry.productCount++;
     });
 
-    const categoryData = Array.from(categoryBreakdown.values())
-      .sort((a, b) => b.quantity - a.quantity);
-
-    // Data freshness - how old is the oldest checked inventory
-    const oldestCheck = currentInventory.length > 0
-      ? currentInventory.reduce((oldest, curr) => 
-          curr.lastCheckedAt < oldest.lastCheckedAt 
-            ? curr 
-            : oldest
-        )
-      : null;
-
-    const newestCheck = currentInventory.length > 0
-      ? currentInventory.reduce((newest, curr) => 
-          curr.lastCheckedAt > newest.lastCheckedAt 
-            ? curr 
-            : newest
-        )
-      : null;
+    const categoryData = Array.from(categoryBreakdown.values()).sort(
+      (a, b) => b.quantity - a.quantity
+    );
 
     return NextResponse.json({
       summary: {
@@ -232,8 +208,8 @@ export async function GET(request: NextRequest) {
       staffActivity: staffActivityList,
       categoryData,
       dataFreshness: {
-        oldestCheckAt: oldestCheck?.lastCheckedAt || null,
-        newestCheckAt: newestCheck?.lastCheckedAt || null,
+        oldestCheckAt: freshness._min.lastCheckedAt || null,
+        newestCheckAt: freshness._max.lastCheckedAt || null,
       },
     });
   } catch (error) {
